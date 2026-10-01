@@ -9,8 +9,9 @@ LIB="$BASE/node_modules/@embedded-postgres/linux-x64/native/lib"
 export LD_LIBRARY_PATH="$LIB:$LD_LIBRARY_PATH"
 export DATABASE_URL="postgresql://preone:preone@127.0.0.1:54329/preone"
 
-# already running?
-if "$BIN/pg_isready" -h 127.0.0.1 -p 54329 >/dev/null 2>&1; then
+# already running? (TCP check — minimal embedded package lacks pg_isready)
+pg_ready() { (exec 3<>"/dev/tcp/127.0.0.1/54329") 2>/dev/null; }
+if pg_ready; then
   echo "[pg] already running"
   exit 0
 fi
@@ -57,7 +58,7 @@ echo "[pg] starting..."
 "$BIN/pg_ctl" -D "$PGDATA" -l "$BASE/db/pg.log" start
 
 for i in $(seq 1 15); do
-  if "$BIN/pg_isready" -h 127.0.0.1 -p 54329 >/dev/null 2>&1; then
+  if pg_ready; then
     echo "[pg] READY on 54329"
     exit 0
   fi

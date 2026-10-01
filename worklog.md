@@ -26,3 +26,21 @@ Stage Summary:
 - "PreOne Plus" = repo modules (Students, Attendance, Fees, HR & Payroll, Transport, Inventory, Admissions, Communication, Operations, Reports, Audit, Setup, PreO Learning) + NEW Exams & Results, Timetable, Library, Hostel — all live on PostgreSQL 54329 with seeded demo data
 - 20 new API endpoints, 4 new UI modules, 9 new Prisma models, RBAC-integrated, parent read-linked scoping
 - Verified: lint clean (only 2 pre-existing legacy files flagged), all smoke tests + browser E2E green, dark mode + mobile responsive
+
+---
+Task ID: 2
+Agent: main (Super Z)
+Task: "pehele server start kr do" — restart full stack (PostgreSQL + Next.js dev server) after sandbox restart
+
+Work Log:
+- Found sandbox wiped processes: no PG, no dev server running; worklog Task 1 confirmed full ERP already built
+- pg-start.sh failed: embedded-postgres minimal package lacks pg_isready binary → patched script to use bash /dev/tcp check (pg_ready function)
+- Ran pg-start.sh → PG 17.10 READY on 127.0.0.1:54329 (db/pgdata intact, .env rewritten to postgresql://preone:preone@127.0.0.1:54329/preone)
+- Started dev server: setsid --fork env DATABASE_URL=... JWT_SECRET=... bun run dev → Next.js 16.1.3 Ready on :3000 in 1.3s
+- Verified via curl: GET / → 200, POST /api/v1/auth/login → 200
+- Agent-browser E2E: login page renders ("PreOne Plus — School Operating System"); login needs School Code field = "sunshine" (owner@sunshine.demo / Preone@123) → redirected /app/setup → /app/home grid shows ALL module tiles incl. Exams & Results, Timetable, Library, Hostel
+- NOTE for future logins: School Code "sunshine" is part of demo login flow (branding lookup /api/v1/auth/branding?code=sunshine)
+
+Stage Summary:
+- PreOne Plus fully back online: PostgreSQL 54329 + Next.js 3000, login verified, dashboard with all modules renders
+- pg-start.sh now sandbox-proof without pg_isready dependency
