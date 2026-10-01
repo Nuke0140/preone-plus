@@ -5,17 +5,20 @@ import Link from 'next/link'
 import {
   Briefcase, Search, UserPlus, FileSpreadsheet, Download, RefreshCw,
   Building, Phone, Mail, MoreHorizontal, Edit3, Shield, Eye, Lock,
-  ChevronLeft, AlertCircle, ArrowUpDown, GraduationCap, Users, X
+  ChevronLeft, AlertCircle, ArrowUpDown, GraduationCap, Users, X,
+  KeyRound, Wand2
 } from 'lucide-react'
 import { Avatar, StatusBadge, EmptyState, KpiTile, PageHead, IconButton } from '@/components/preone/ui'
 import { EmptyUsersIllustration } from '@/components/preone'
 import { DataTable, Column } from '@/components/preone/DataTable'
 import { Breadcrumbs } from '@/components/preone/Breadcrumbs'
 import { useToast } from '@/components/preone/Toast'
+import { ConfirmModal } from '@/components/preone/Modal'
 import { AddStaffModal } from '@/components/users/AddStaffModal'
 import { CsvImportModal } from '@/components/users/CsvImportModal'
 import { User360Drawer } from '@/components/users/User360Drawer'
 import { EditUserModal } from '@/components/users/EditUserModal'
+import { ResetPasswordModal } from '@/components/users/ResetPasswordModal'
 import { RolesDirectoryModal } from '@/components/users/RolesDirectoryModal'
 import {
   UserRecord, BranchOption, ClassroomOption, Role,
@@ -49,6 +52,14 @@ export default function StaffUsersPage() {
   const [rolesModalOpen, setRolesModalOpen] = useState(false)
   const [viewingUser, setViewingUser] = useState<UserRecord | null>(null)
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null)
+  const [resetPwdUser, setResetPwdUser] = useState<UserRecord | null>(null)
+
+  // Bulk selection & actions
+  const [selectedIds, setSelectedIds] = useState<(string | number)[]>([])
+  const [bulkAction, setBulkAction] = useState<'' | 'ACTIVATE' | 'SUSPEND' | 'DEACTIVATE' | 'ASSIGN_ROLE'>('')
+  const [bulkRole, setBulkRole] = useState<string>('')
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+  const [bulkExecuting, setBulkExecuting] = useState(false)
 
   const fetchBranchesAndClassrooms = async () => {
     try {
@@ -114,6 +125,64 @@ export default function StaffUsersPage() {
     const leadership = users.filter((u) => ['OWNER', 'PRINCIPAL', 'COORDINATOR', 'ACCOUNTS'].includes(normalizeRole(u.role))).length
     return { active, teachers, staffOps, leadership }
   }, [users])
+
+  // ── Bulk operations (POST /api/v1/users/bulk) ──
+  // DataTable selection keys are TenantUser ids (u.id) — map rows accordingly
+  const selectedUsers = useMemo(
+    () => users.filter((u) => selectedIds.includes(u.id)),
+    [users, selectedIds]
+  )
+
+  const executeBulk = async () => {
+    if (!bulkAction) return
+    setBulkExecuting(true)
+    try {
+      // DataTable selection keys are TenantUser ids — bulk API expects User ids
+      const targetUserIds = selectedUsers.map((u) => u.userId)
+      const body: Record<string, unknown> = {
+        action: bulkAction,
+        userIds: targetUserIds,
+        mode: 'EXECUTE',
+      }
+      if (bulkAction === 'ASSIGN_ROLE') body.role = bulkRole
+
+      const res = await fetch('/api/v1/users/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || json.message || 'Bulk operation failed')
+
+      const data = json.data || {}
+      const affected = data.updatedCount ?? 0
+      const blockedCount = (data.blocked || []).length
+      toast.success(
+        'Bulk Action Completed',
+        `${bulkAction === 'ASSIGN_ROLE' ? `Role assigned to ${affected} user(s)` : `Status updated for ${affected} user(s)`}${blockedCount ? ` — ${blockedCount} skipped (protected accounts)` : ''}`
+      )
+      setSelectedIds([])
+      setBulkAction('')
+      setBulkRole('')
+      setBulkConfirmOpen(false)
+      fetchStaff()
+    } catch (err: any) {
+      toast.error('Bulk Action Failed', err.message)
+    } finally {
+      setBulkExecuting(false)
+    }
+  }
+
+  const bulkPreviewLabel = useMemo(() => {
+    if (bulkAction === 'ASSIGN_ROLE') {
+      const roleLabel = ROLE_BADGE[bulkRole]?.label || bulkRole
+      return `Assign role "${roleLabel}" to ${selectedIds.length} selected staff member(s)?`
+    }
+    if (bulkAction === 'ACTIVATE') return `Activate ${selectedIds.length} selected staff account(s)?`
+    if (bulkAction === 'SUSPEND') return `Suspend ${selectedIds.length} selected staff account(s)? They will be signed out everywhere.`
+    if (bulkAction === 'DEACTIVATE') return `Deactivate ${selectedIds.length} selected staff account(s)? They will lose access until re-activated.`
+    return ''
+  }, [bulkAction, bulkRole, selectedIds.length])
 
   // Columns definition for DataTable
   const columns: Column<UserRecord>[] = [
@@ -212,6 +281,11 @@ export default function StaffUsersPage() {
       align: 'right',
       render: (u) => (
         <div className="dt-actions-row">
+          <IconButton
+            icon={<KeyRound size={15} />}
+            label={u.status === 'PENDING' ? 'Resend Invitation' : 'Reset Password / Resend Invite'}
+            onClick={() => setResetPwdUser(u)}
+          />
           <IconButton
             icon={<Eye size={15} />}
             label="View 360 Profile"
@@ -433,6 +507,69 @@ export default function StaffUsersPage() {
         </div>
       </div>
 
+      {/* Bulk Action Bar (appears when rows selected) */}
+      {selectedIds.length > 0 && (
+        <div
+          className="card card-compact p-3 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 border-2"
+          style={{ borderColor: 'var(--primary, #7C3AED)', background: 'var(--bg-subtle)' }}
+        >
+          <span className="text-xs font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 shrink-0">
+            <Wand2 className="w-4 h-4 text-purple-600" />
+            {selectedIds.length} selected
+          </span>
+
+          <select
+            value={bulkAction}
+            onChange={(e) => {
+              setBulkAction(e.target.value as typeof bulkAction)
+              if (!e.target.value) setBulkRole('')
+            }}
+            className="select text-xs py-2"
+            aria-label="Bulk action"
+          >
+            <option value="">Choose bulk action…</option>
+            <option value="ASSIGN_ROLE">Assign Role</option>
+            <option value="ACTIVATE">Activate Accounts</option>
+            <option value="SUSPEND">Suspend Accounts</option>
+            <option value="DEACTIVATE">Deactivate Accounts</option>
+          </select>
+
+          {bulkAction === 'ASSIGN_ROLE' && (
+            <select
+              value={bulkRole}
+              onChange={(e) => setBulkRole(e.target.value)}
+              className="select text-xs py-2"
+              aria-label="Role to assign"
+            >
+              <option value="">Choose role…</option>
+              {CANONICAL_STAFF_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_BADGE[r]?.label || r}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <button
+              type="button"
+              className="btn btn-ghost text-xs"
+              onClick={() => setSelectedIds([])}
+            >
+              Clear Selection
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary text-xs"
+              disabled={!bulkAction || (bulkAction === 'ASSIGN_ROLE' && !bulkRole)}
+              onClick={() => setBulkConfirmOpen(true)}
+            >
+              Apply to {selectedIds.length}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Staff DataTable Workspace */}
       <div className="table-workspace">
         <DataTable
@@ -440,6 +577,9 @@ export default function StaffUsersPage() {
           data={users}
           loading={loading}
           showToolbar={false}
+          rowSelection
+          selectedKeys={selectedIds}
+          onSelectionChange={(keys) => setSelectedIds(keys as (string | number)[])}
           emptyIcon={<EmptyUsersIllustration size={120} />}
           emptyTitle="No staff members found"
           emptyMessage="No staff records match your selected role, branch, status, or search query."
@@ -496,6 +636,24 @@ export default function StaffUsersPage() {
         onClose={() => setViewingUser(null)}
         user={viewingUser}
         onEdit={(u) => setEditingUser(u)}
+        onPasswordReset={(u) => setResetPwdUser(u)}
+      />
+
+      <ResetPasswordModal
+        open={Boolean(resetPwdUser)}
+        onClose={() => setResetPwdUser(null)}
+        user={resetPwdUser}
+      />
+
+      {/* Bulk action confirmation */}
+      <ConfirmModal
+        open={bulkConfirmOpen}
+        onClose={() => setBulkConfirmOpen(false)}
+        title="Confirm Bulk Action"
+        message={bulkPreviewLabel}
+        confirmLabel={bulkExecuting ? 'Applying…' : 'Apply Bulk Action'}
+        danger={bulkAction === 'SUSPEND' || bulkAction === 'DEACTIVATE'}
+        onConfirm={executeBulk}
       />
 
       <EditUserModal

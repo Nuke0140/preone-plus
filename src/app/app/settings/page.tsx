@@ -90,6 +90,12 @@ export default function SettingsControlCenter() {
   
   // Security & RBAC
   const [permissionsMatrix, setPermissionsMatrix] = useState<any[]>([])
+  const [securityPolicy, setSecurityPolicy] = useState<any>({
+    passwordMinLength: 8,
+    passwordExpiryDays: 0,
+    twoFactorRoles: ['OWNER', 'ACCOUNTS'],
+    maxFailedLogins: 5,
+  })
   const [passwordModalOpen, setPasswordModalOpen] = useState<boolean>(false)
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   
@@ -133,6 +139,14 @@ export default function SettingsControlCenter() {
         setAcademicConfig(d.CURRICULUM || {})
         setStudentParentConfig(d.STUDENT_PARENT || {})
         setCommConfig(d.COMMUNICATION || {})
+        if (d.SECURITY) {
+          setSecurityPolicy({
+            passwordMinLength: Number(d.SECURITY.passwordMinLength) || 8,
+            passwordExpiryDays: Number(d.SECURITY.passwordExpiryDays) || 0,
+            twoFactorRoles: Array.isArray(d.SECURITY.twoFactorRoles) ? d.SECURITY.twoFactorRoles : ['OWNER', 'ACCOUNTS'],
+            maxFailedLogins: Number(d.SECURITY.maxFailedLogins) || 5,
+          })
+        }
       }
 
       if (healthRes.success) setHealthData(healthRes.data)
@@ -1153,13 +1167,110 @@ export default function SettingsControlCenter() {
             <p className="txt-muted" style={{ fontSize: 13 }}>Manage authentication security, password policies, and active sessions</p>
           </div>
 
+          {/* School-wide Security Policy Editor */}
+          <div className="panel" style={{ border: '1px solid var(--border)' }}>
+            <h4 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ShieldCheck size={15} /> School Security Policy
+            </h4>
+            <p className="txt-muted" style={{ fontSize: 12, margin: '8px 0 16px' }}>
+              Applied server-side to every password change and admin reset across your school.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Minimum Password Length
+                </label>
+                <input
+                  type="number"
+                  min={6}
+                  max={64}
+                  value={securityPolicy.passwordMinLength}
+                  onChange={(e) => setSecurityPolicy({ ...securityPolicy, passwordMinLength: Number(e.target.value) })}
+                  className="input w-full text-sm"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Between 6 and 64 characters</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Password Expiry (days)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={365}
+                  value={securityPolicy.passwordExpiryDays}
+                  onChange={(e) => setSecurityPolicy({ ...securityPolicy, passwordExpiryDays: Number(e.target.value) })}
+                  className="input w-full text-sm"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">0 = passwords never expire</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Max Failed Login Attempts
+                </label>
+                <input
+                  type="number"
+                  min={3}
+                  max={10}
+                  value={securityPolicy.maxFailedLogins}
+                  onChange={(e) => setSecurityPolicy({ ...securityPolicy, maxFailedLogins: Number(e.target.value) })}
+                  className="input w-full text-sm"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Account locks after this many failures</p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Require 2FA (verification code) for these roles
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {['OWNER', 'PRINCIPAL', 'VICE_PRINCIPAL', 'ACCOUNTS', 'EXAM_CELL', 'COORDINATOR'].map((r) => {
+                  const active = (securityPolicy.twoFactorRoles || []).includes(r)
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() =>
+                        setSecurityPolicy({
+                          ...securityPolicy,
+                          twoFactorRoles: active
+                            ? (securityPolicy.twoFactorRoles || []).filter((x: string) => x !== r)
+                            : [...(securityPolicy.twoFactorRoles || []), r],
+                        })
+                      }
+                      className={`badge ${active ? 'b-primary' : 'b-neutral'}`}
+                      style={{ cursor: 'pointer', fontSize: 11 }}
+                    >
+                      {active ? '✓ ' : ''}{r.replace(/_/g, ' ')}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2">
+                Roles marked here will be required to complete a verification-code step at sign-in once SMS/Email gateways are connected.
+              </p>
+            </div>
+
+            <div className="mt-4">
+              <button
+                className="btn btn-primary"
+                disabled={busy}
+                onClick={() => handleSaveDomain('SECURITY', securityPolicy)}
+              >
+                Save Security Policy
+              </button>
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
             <div className="panel" style={{ border: '1px solid var(--border)' }}>
               <h4 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Lock size={15} /> Password Policy
               </h4>
               <p className="txt-muted" style={{ fontSize: 12, margin: '8px 0 16px' }}>
-                Passwords require a minimum of 8 characters and are encrypted with bcrypt salt rounds.
+                Passwords require a minimum of {securityPolicy.passwordMinLength} characters and are encrypted with bcrypt salt rounds.
               </p>
               <button className="btn btn-secondary" onClick={() => setPasswordModalOpen(true)}>
                 Change Account Password

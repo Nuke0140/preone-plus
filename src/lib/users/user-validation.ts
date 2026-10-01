@@ -200,6 +200,16 @@ export function validateStaffInput(input: StaffCreateInput): { valid: boolean; e
     }
   }
 
+  // Staff phone is mandatory — schools depend on it for SMS alerts & emergencies
+  if (!input.phone || !input.phone.trim()) {
+    errors.push('Mobile phone number is required for staff members (used for SMS alerts & emergencies)')
+  } else {
+    const digits = input.phone.replace(/[^\d]/g, '')
+    if (digits.length < 10) {
+      errors.push('Mobile phone number must contain at least 10 digits')
+    }
+  }
+
   const assignedRoles =
     input.roles && input.roles.length > 0
       ? input.roles

@@ -102,6 +102,14 @@ export type ConfigDomainKey =
   | 'CURRICULUM'
   | 'BRANDING'
   | 'INVENTORY'
+  | 'SECURITY'
+
+export interface PasswordPolicy {
+  passwordMinLength: number
+  passwordExpiryDays: number
+  twoFactorRoles: string[]
+  maxFailedLogins: number
+}
 
 const DEFAULTS: Record<string, Record<string, unknown>> = {
   OPERATING: {
@@ -177,6 +185,23 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     requirePRApproval: true,
     requireIssueApproval: false,
   },
+  SECURITY: {
+    passwordMinLength: 8,
+    passwordExpiryDays: 0, // 0 = never expires
+    twoFactorRoles: ['OWNER', 'ACCOUNTS'],
+    maxFailedLogins: 5,
+  },
+}
+
+/** Read the effective password/security policy for a tenant (merged over defaults). */
+export async function getPasswordPolicy(tenantId: string): Promise<PasswordPolicy> {
+  const cfg = await getDomainConfig(tenantId, 'SECURITY')
+  return {
+    passwordMinLength: Math.max(6, Number(cfg.passwordMinLength) || 8),
+    passwordExpiryDays: Math.max(0, Number(cfg.passwordExpiryDays) || 0),
+    twoFactorRoles: Array.isArray(cfg.twoFactorRoles) ? (cfg.twoFactorRoles as string[]) : ['OWNER', 'ACCOUNTS'],
+    maxFailedLogins: Math.max(3, Number(cfg.maxFailedLogins) || 5),
+  }
 }
 
 /** Read a domain config merged over typed defaults. Never throws. */

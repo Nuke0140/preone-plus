@@ -33,6 +33,13 @@ export function Modal({
     const opener = document.activeElement as HTMLElement | null
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Stacked-overlay safety: only the TOP-MOST overlay reacts to Escape,
+        // so closing one dialog never yanks both out from under the user.
+        const overlays = document.querySelectorAll('.ovl')
+        const thisOverlay = panelRef.current?.closest('.ovl')
+        if (thisOverlay && overlays.length > 1 && overlays[overlays.length - 1] !== thisOverlay) {
+          return
+        }
         e.stopPropagation()
         onClose()
         return
@@ -69,7 +76,10 @@ export function Modal({
     return () => {
       window.clearTimeout(focusTimer)
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      // Only restore page scrolling when NO other overlay is still on screen
+      if (!document.querySelector('.ovl')) {
+        document.body.style.overflow = ''
+      }
       opener?.focus()
     }
   }, [open, onClose])
@@ -166,6 +176,13 @@ export function Drawer({
     const opener = document.activeElement as HTMLElement | null
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Stacked-overlay safety: only the TOP-MOST overlay reacts to Escape,
+        // so closing one dialog never yanks both out from under the user.
+        const overlays = document.querySelectorAll('.ovl')
+        const thisOverlay = panelRef.current?.closest('.ovl')
+        if (thisOverlay && overlays.length > 1 && overlays[overlays.length - 1] !== thisOverlay) {
+          return
+        }
         e.stopPropagation()
         onClose()
         return
@@ -202,7 +219,10 @@ export function Drawer({
     return () => {
       window.clearTimeout(focusTimer)
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      // Only restore page scrolling when NO other overlay is still on screen
+      if (!document.querySelector('.ovl')) {
+        document.body.style.overflow = ''
+      }
       opener?.focus()
     }
   }, [open, onClose])

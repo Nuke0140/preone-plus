@@ -50,6 +50,18 @@ export function EditUserModal({ open, onClose, user, branches, onSuccess }: Edit
       return
     }
 
+    if (isStaff) {
+      const phoneDigits = phone.replace(/\D/g, '')
+      if (!phone.trim()) {
+        toast.error('Validation Error', 'Mobile Phone is required — schools use it for SMS alerts & emergencies')
+        return
+      }
+      if (phoneDigits.length < 10) {
+        toast.error('Validation Error', 'Mobile Phone must contain at least 10 digits')
+        return
+      }
+    }
+
     setSubmitting(true)
     try {
       const payload: any = {
@@ -134,12 +146,13 @@ export function EditUserModal({ open, onClose, user, branches, onSuccess }: Edit
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Mobile Phone
+              Mobile Phone {isStaff && <span className="text-red-500">*</span>}
             </label>
             <div className="relative input-icon-wrap">
               <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input
                 type="tel"
+                required={isStaff}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 style={{ paddingLeft: 38 }}

@@ -1398,6 +1398,80 @@ button:focus:not(:focus-visible) {
   background-color: #EC4899;
 }
 
+/* ── Extended RBAC role badge variants (PreOne Plus K-12 roles) ── */
+.b-purple {
+  background: #F5F3FF;
+  color: #6D28D9;
+  border-color: rgba(221, 214, 254, 0.80);
+}
+.b-purple .status-dot {
+  background-color: #8B5CF6;
+}
+.b-blue {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: rgba(191, 219, 254, 0.80);
+}
+.b-blue .status-dot {
+  background-color: #3B82F6;
+}
+.b-cyan {
+  background: #ECFEFF;
+  color: #0E7490;
+  border-color: rgba(165, 243, 252, 0.80);
+}
+.b-cyan .status-dot {
+  background-color: #06B6D4;
+}
+.b-teal {
+  background: #F0FDFA;
+  color: #0F766E;
+  border-color: rgba(153, 246, 228, 0.80);
+}
+.b-teal .status-dot {
+  background-color: #14B8A6;
+}
+.b-teal-soft {
+  background: #F0FDFA;
+  color: #0D9488;
+  border-color: rgba(204, 251, 241, 0.80);
+}
+.b-teal-soft .status-dot {
+  background-color: #2DD4BF;
+}
+.b-indigo {
+  background: #EEF2FF;
+  color: #4338CA;
+  border-color: rgba(199, 210, 254, 0.80);
+}
+.b-indigo .status-dot {
+  background-color: #6366F1;
+}
+.b-amber {
+  background: #FFFBEB;
+  color: #B45309;
+  border-color: rgba(253, 230, 138, 0.80);
+}
+.b-amber .status-dot {
+  background-color: #F59E0B;
+}
+.b-orange-soft {
+  background: #FFF7ED;
+  color: #C2410C;
+  border-color: rgba(254, 215, 170, 0.80);
+}
+.b-orange-soft .status-dot {
+  background-color: #FB923C;
+}
+.b-sky {
+  background: #F0F9FF;
+  color: #0369A1;
+  border-color: rgba(186, 230, 253, 0.80);
+}
+.b-sky .status-dot {
+  background-color: #38BDF8;
+}
+
 /* Legacy .b-dot compatibility */
 .badge.b-dot::before {
   content: "";
@@ -1550,6 +1624,44 @@ button:focus:not(:focus-visible) {
 .dark .b-pink .status-dot {
   background-color: #F472B6;
 }
+
+/* ── Dark-mode equivalents for extended role badge variants ── */
+[data-theme="dark"] .b-purple, .dark .b-purple {
+  background: rgba(139, 92, 246, 0.16); color: #C4B5FD; border-color: rgba(139, 92, 246, 0.32);
+}
+[data-theme="dark"] .b-purple .status-dot, .dark .b-purple .status-dot { background-color: #C4B5FD; }
+[data-theme="dark"] .b-blue, .dark .b-blue {
+  background: rgba(59, 130, 246, 0.16); color: #93C5FD; border-color: rgba(59, 130, 246, 0.32);
+}
+[data-theme="dark"] .b-blue .status-dot, .dark .b-blue .status-dot { background-color: #93C5FD; }
+[data-theme="dark"] .b-cyan, .dark .b-cyan {
+  background: rgba(6, 182, 212, 0.16); color: #67E8F9; border-color: rgba(6, 182, 212, 0.32);
+}
+[data-theme="dark"] .b-cyan .status-dot, .dark .b-cyan .status-dot { background-color: #67E8F9; }
+[data-theme="dark"] .b-teal, .dark .b-teal {
+  background: rgba(20, 184, 166, 0.16); color: #5EEAD4; border-color: rgba(20, 184, 166, 0.32);
+}
+[data-theme="dark"] .b-teal .status-dot, .dark .b-teal .status-dot { background-color: #5EEAD4; }
+[data-theme="dark"] .b-teal-soft, .dark .b-teal-soft {
+  background: rgba(45, 212, 191, 0.14); color: #5EEAD4; border-color: rgba(45, 212, 191, 0.30);
+}
+[data-theme="dark"] .b-teal-soft .status-dot, .dark .b-teal-soft .status-dot { background-color: #5EEAD4; }
+[data-theme="dark"] .b-indigo, .dark .b-indigo {
+  background: rgba(99, 102, 241, 0.16); color: #A5B4FC; border-color: rgba(99, 102, 241, 0.32);
+}
+[data-theme="dark"] .b-indigo .status-dot, .dark .b-indigo .status-dot { background-color: #A5B4FC; }
+[data-theme="dark"] .b-amber, .dark .b-amber {
+  background: rgba(245, 158, 11, 0.16); color: #FCD34D; border-color: rgba(245, 158, 11, 0.32);
+}
+[data-theme="dark"] .b-amber .status-dot, .dark .b-amber .status-dot { background-color: #FCD34D; }
+[data-theme="dark"] .b-orange-soft, .dark .b-orange-soft {
+  background: rgba(251, 146, 60, 0.14); color: #FDBA74; border-color: rgba(251, 146, 60, 0.30);
+}
+[data-theme="dark"] .b-orange-soft .status-dot, .dark .b-orange-soft .status-dot { background-color: #FDBA74; }
+[data-theme="dark"] .b-sky, .dark .b-sky {
+  background: rgba(56, 189, 248, 0.14); color: #7DD3FC; border-color: rgba(56, 189, 248, 0.30);
+}
+[data-theme="dark"] .b-sky .status-dot, .dark .b-sky .status-dot { background-color: #7DD3FC; }
 
 /* Reduced motion accessibility */
 @media (prefers-reduced-motion: reduce) {

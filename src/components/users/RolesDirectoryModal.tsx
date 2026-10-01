@@ -4,11 +4,13 @@ import React, { useState, useMemo } from 'react'
 import {
   ShieldCheck, Search, Shield, KeyRound, CheckCircle2, Lock,
   Crown, GraduationCap, BookOpen, HeartHandshake, CircleDollarSign,
-  Users, Bus, Heart, ChevronRight, X, Globe, Layers, AlertCircle, Sparkles
+  Users, Bus, Heart, ChevronRight, X, Globe, Layers, AlertCircle, Sparkles,
+  FileCheck2
 } from 'lucide-react'
 import { Modal } from '@/components/preone/Modal'
 import { SecurityShieldIllustration } from '@/components/preone'
 import { DEFAULT_ROLES_MATRIX, RoleMatrixItem } from './types'
+import { CustomRoleManager } from './CustomRoleManager'
 
 interface RolesDirectoryModalProps {
   open: boolean
@@ -264,6 +266,114 @@ interface RoleConfig {
 }
 
 const ROLE_CONFIGS: Record<string, RoleConfig> = {
+  VICE_PRINCIPAL: {
+    icon: Users,
+    title: 'Vice Principal',
+    badgeText: 'Vice Principal',
+    badgeCls: 'b-info',
+    category: 'WORKFORCE',
+    categoryLabel: 'Preschool Leadership',
+    tierLabel: 'Tier 1 • Deputy Head',
+    scope: 'Campus / Branch (Deputy Authority)',
+    boundary: 'Academic + Administrative Scope',
+    tagline: 'Deputy campus head — academic and administrative authority when the Principal is unavailable',
+    accentColor: '#2563EB',
+    iconBg: '#DBEAFE',
+    iconColor: '#1D4ED8',
+    policyTitle: 'Deputy Leadership Authority',
+    policyText: 'Vice Principals carry full academic and administrative authority — admissions approval, staff management, exams, and operations — one step below the Principal. Payroll processing and school-wide settings remain Principal/Owner territory.',
+    policyType: 'info',
+  },
+  LIBRARIAN: {
+    icon: BookOpen,
+    title: 'Librarian',
+    badgeText: 'Librarian',
+    badgeCls: 'b-amber',
+    category: 'WORKFORCE',
+    categoryLabel: 'Preschool Workforce',
+    tierLabel: 'Tier 2 • Library In-charge',
+    scope: 'Library & Catalog',
+    boundary: 'Library Operations Only',
+    tagline: 'Library in-charge — catalog management, book issue/return, fines, and overdue follow-ups',
+    accentColor: '#D97706',
+    iconBg: '#FEF3C7',
+    iconColor: '#B45309',
+    policyTitle: 'Library Operations Boundary',
+    policyText: 'Librarians manage the full catalog lifecycle — add books, issue, return, fines, and overdue reminders. Fee ledgers, staff records, and administrative settings are inaccessible.',
+    policyType: 'info',
+  },
+  LAB_ASSISTANT: {
+    icon: Layers,
+    title: 'Lab Assistant',
+    badgeText: 'Lab Assistant',
+    badgeCls: 'b-teal',
+    category: 'WORKFORCE',
+    categoryLabel: 'Preschool Workforce',
+    tierLabel: 'Tier 2 • Laboratory Support',
+    scope: 'Laboratory & Equipment',
+    boundary: 'Lab Inventory & Support',
+    tagline: 'Laboratory support — lab equipment inventory, material requests, and classroom assistance',
+    accentColor: '#0D9488',
+    iconBg: '#CCFBF1',
+    iconColor: '#0F766E',
+    policyTitle: 'Laboratory Support Scope',
+    policyText: 'Lab assistants handle equipment inventory, material requests, and in-class support. Student assessments, finance, and administration stay out of reach.',
+    policyType: 'info',
+  },
+  EXAM_CELL: {
+    icon: FileCheck2,
+    title: 'Exam Cell',
+    badgeText: 'Exam Cell',
+    badgeCls: 'b-purple',
+    category: 'WORKFORCE',
+    categoryLabel: 'Preschool Workforce',
+    tierLabel: 'Tier 2 • Examination Dept',
+    scope: 'Examinations & Results',
+    boundary: 'Exam Lifecycle & Report Cards',
+    tagline: 'Examination department — exam scheduling, marks management, results publication, and report cards',
+    accentColor: '#7C3AED',
+    iconBg: '#EDE9FE',
+    iconColor: '#6D28D9',
+    policyTitle: 'Examination Authority Boundary',
+    policyText: 'The exam cell owns the exam lifecycle — scheduling, marks entry, grading, ranking, and publishing report cards. Fee management, HR, and school configuration are restricted.',
+    policyType: 'warning',
+  },
+  TRANSPORT_INCHARGE: {
+    icon: Bus,
+    title: 'Transport In-charge',
+    badgeText: 'Transport In-charge',
+    badgeCls: 'b-orange',
+    category: 'WORKFORCE',
+    categoryLabel: 'Preschool Workforce',
+    tierLabel: 'Tier 2 • Transport Coordinator',
+    scope: 'Transport Fleet & Routes',
+    boundary: 'Fleet, Routes & Allocations',
+    tagline: 'Transport coordinator — routes, vehicles, driver assignment, trips, and student transport allocation',
+    accentColor: '#EA580C',
+    iconBg: '#FFEDD5',
+    iconColor: '#C2410C',
+    policyTitle: 'Fleet Coordination Boundary',
+    policyText: 'Transport in-charges manage routes, vehicles, driver rosters, trip runs, and student bus allocations. Academic records and finance remain inaccessible.',
+    policyType: 'info',
+  },
+  COUNSELOR: {
+    icon: HeartHandshake,
+    title: 'Counselor',
+    badgeText: 'Counselor / Wellness',
+    badgeCls: 'b-cyan',
+    category: 'WORKFORCE',
+    categoryLabel: 'Preschool Workforce',
+    tierLabel: 'Tier 2 • Student Wellness',
+    scope: 'Student Wellness & Follow-ups',
+    boundary: 'Wellbeing & Case Communication',
+    tagline: 'Student counselor — wellbeing observations, follow-ups, and parent communication for assigned cases',
+    accentColor: '#0891B2',
+    iconBg: '#CFFAFE',
+    iconColor: '#0E7490',
+    policyTitle: 'Wellness & Confidentiality Scope',
+    policyText: 'Counselors view student profiles and attendance for wellness cases, record observations and follow-ups, and communicate with parents. Finance, payroll, and settings are restricted.',
+    policyType: 'info',
+  },
   OWNER: {
     icon: Crown,
     title: 'Institution Owner',
@@ -472,6 +582,7 @@ export function RolesDirectoryModal({
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<RoleCategory>('ALL')
   const [selectedRole, setSelectedRole] = useState<string>('OWNER')
+  const [viewMode, setViewMode] = useState<'MATRIX' | 'CUSTOM'>('MATRIX')
 
   // Filter roles by category tab & search keyword
   const filteredRoles = useMemo(() => {
@@ -520,7 +631,7 @@ export function RolesDirectoryModal({
       open={open}
       onClose={onClose}
       title="Roles Directory & Permissions Matrix"
-      subtitle="Canonical 9 RBAC roles defined in PreOne Enterprise Preschool OS"
+      subtitle="Canonical 18 RBAC roles + custom school-defined roles in PreOne Plus"
       icon={<ShieldCheck className="w-5 h-5 text-purple-600" />}
       iconClass="ic-purple"
       maxWidth="min(1040px, 100vw - 32px)"
@@ -549,9 +660,9 @@ export function RolesDirectoryModal({
             <button
               type="button"
               role="tab"
-              aria-selected={activeCategory === 'ALL'}
-              onClick={() => setActiveCategory('ALL')}
-              className={`flex items-center gap-1.5 ${activeCategory === 'ALL' ? 'on' : ''}`}
+              aria-selected={viewMode === 'MATRIX' && activeCategory === 'ALL'}
+              onClick={() => { setViewMode('MATRIX'); setActiveCategory('ALL') }}
+              className={`flex items-center gap-1.5 ${viewMode === 'MATRIX' && activeCategory === 'ALL' ? 'on' : ''}`}
             >
               <span>All Roles</span>
               <span className="text-[10px] opacity-75 font-semibold">({rolesMatrix.length})</span>
@@ -559,22 +670,32 @@ export function RolesDirectoryModal({
             <button
               type="button"
               role="tab"
-              aria-selected={activeCategory === 'WORKFORCE'}
-              onClick={() => setActiveCategory('WORKFORCE')}
-              className={`flex items-center gap-1.5 ${activeCategory === 'WORKFORCE' ? 'on' : ''}`}
+              aria-selected={viewMode === 'MATRIX' && activeCategory === 'WORKFORCE'}
+              onClick={() => { setViewMode('MATRIX'); setActiveCategory('WORKFORCE') }}
+              className={`flex items-center gap-1.5 ${viewMode === 'MATRIX' && activeCategory === 'WORKFORCE' ? 'on' : ''}`}
             >
-              <span>Preschool Staff</span>
+              <span>School Staff</span>
               <span className="text-[10px] opacity-75 font-semibold">({workforceCount})</span>
             </button>
             <button
               type="button"
               role="tab"
-              aria-selected={activeCategory === 'FAMILY'}
-              onClick={() => setActiveCategory('FAMILY')}
-              className={`flex items-center gap-1.5 ${activeCategory === 'FAMILY' ? 'on' : ''}`}
+              aria-selected={viewMode === 'MATRIX' && activeCategory === 'FAMILY'}
+              onClick={() => { setViewMode('MATRIX'); setActiveCategory('FAMILY') }}
+              className={`flex items-center gap-1.5 ${viewMode === 'MATRIX' && activeCategory === 'FAMILY' ? 'on' : ''}`}
             >
               <span>Family & Caregivers</span>
               <span className="text-[10px] opacity-75 font-semibold">({familyCount})</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'CUSTOM'}
+              onClick={() => setViewMode('CUSTOM')}
+              className={`flex items-center gap-1.5 ${viewMode === 'CUSTOM' ? 'on' : ''}`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Custom Roles</span>
             </button>
           </div>
 
@@ -603,6 +724,9 @@ export function RolesDirectoryModal({
         </div>
 
         {/* 2-Pane Split: Roles Scannable List (Left) & Role Deep-Dive Policy (Right) */}
+        {viewMode === 'CUSTOM' ? (
+          <CustomRoleManager />
+        ) : (
         <div className="roles-matrix-grid">
           {/* Left Column: Role Cards List */}
           <div className="role-list-pane">
@@ -869,6 +993,7 @@ export function RolesDirectoryModal({
             )}
           </div>
         </div>
+        )}
       </div>
     </Modal>
   )

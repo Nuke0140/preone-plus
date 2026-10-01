@@ -41,6 +41,7 @@ export class SettingsService {
       communication,
       curriculum,
       branding,
+      security,
       branchesCount,
       academicSessionsCount,
       programsCount,
@@ -56,6 +57,7 @@ export class SettingsService {
       getDomainConfig(tenantId, 'COMMUNICATION'),
       getDomainConfig(tenantId, 'CURRICULUM'),
       getDomainConfig(tenantId, 'BRANDING'),
+      getDomainConfig(tenantId, 'SECURITY'),
       db.branch.count({ where: { tenantId, deletedAt: null } }),
       db.academicSession.count({ where: { tenantId } }),
       db.program.count({ where: { tenantId, deletedAt: null } }),
@@ -101,6 +103,7 @@ export class SettingsService {
         COMMUNICATION: communication,
         CURRICULUM: curriculum,
         BRANDING: branding,
+        SECURITY: security,
       },
     }
   }
@@ -219,7 +222,7 @@ export class SettingsService {
   }
 
   /**
-   * Secure Password Change with bcrypt & policy validation
+   * Secure Password Change with bcrypt & tenant password-policy validation
    */
   static async changePassword(
     userId: string,
@@ -227,12 +230,32 @@ export class SettingsService {
     newPassword: string,
     actor?: ScopeActor
   ) {
-    if (!newPassword || newPassword.length < 8) {
-      throw new Error('New password must be at least 8 characters long')
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters long')
     }
 
     const user = await db.user.findUnique({ where: { id: userId } })
     if (!user) throw new Error('User not found')
+
+    // Enforce tenant password policy (min length)
+    let minLength = 8
+    try {
+      const membership = await db.tenantUser.findFirst({
+        where: { userId, deletedAt: null },
+        select: { tenantId: true },
+      })
+      if (membership) {
+        const { getPasswordPolicy } = await import('@/lib/config')
+        const policy = await getPasswordPolicy(membership.tenantId)
+        minLength = policy.passwordMinLength
+      }
+    } catch {
+      // fall back to platform default of 8
+    }
+
+    if (newPassword.length < minLength) {
+      throw new Error(`New password must be at least ${minLength} characters long (school password policy)`)
+    }
 
     const match = await bcrypt.compare(currentPassword, user.passwordHash)
     if (!match) {

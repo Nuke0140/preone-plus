@@ -146,6 +146,16 @@ export function AddStaffModal({ open, onClose, branches, classrooms, onSuccess }
       return
     }
 
+    const phoneDigits = phone.replace(/\D/g, '')
+    if (!phone.trim()) {
+      toast.error('Validation Error', 'Mobile Phone is required — schools use it for SMS alerts & emergencies')
+      return
+    }
+    if (phoneDigits.length < 10) {
+      toast.error('Validation Error', 'Mobile Phone must contain at least 10 digits')
+      return
+    }
+
     if (!branchId) {
       toast.error('Validation Error', 'Campus Branch is required')
       return
@@ -353,11 +363,14 @@ export function AddStaffModal({ open, onClose, branches, classrooms, onSuccess }
 
             {/* Mobile Phone */}
             <div className="field">
-              <label>Mobile Phone</label>
+              <label>
+                Mobile Phone <span style={{ color: 'var(--danger, #DC2626)' }}>*</span>
+              </label>
               <div className="input-icon-wrap">
                 <Phone style={{ width: 16, height: 16 }} />
                 <input
                   type="tel"
+                  required
                   placeholder="e.g. +91 98765 43210"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -365,6 +378,7 @@ export function AddStaffModal({ open, onClose, branches, classrooms, onSuccess }
                   style={{ paddingLeft: 38 }}
                 />
               </div>
+              <p className="text-[10px] text-gray-400 mt-1">Required for SMS alerts &amp; emergency contact</p>
             </div>
 
             {/* Date of Birth */}

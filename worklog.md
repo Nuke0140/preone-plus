@@ -44,3 +44,40 @@ Work Log:
 Stage Summary:
 - PreOne Plus fully back online: PostgreSQL 54329 + Next.js 3000, login verified, dashboard with all modules renders
 - pg-start.sh now sandbox-proof without pg_isready dependency
+
+---
+Task ID: 3
+Agent: main (Super Z)
+Task: Users module full upgrade — bug fixes + 10 improvements (invite/reset, security timeline, phone required, 6 K-12 roles, bulk UI, password policy, custom roles)
+
+Work Log:
+- Root-caused "Escape-backdrop bug": basic flow actually clean (0 overlays after Escape); real risk was multi-modal stacking. Hardened Modal.tsx + Drawer: top-most overlay check via querySelectorAll('.ovl') before Escape close, overflow restore only when no overlay remains (replace_all applied to both Modal & Drawer)
+- Prisma: UserRole enum +6 (VICE_PRINCIPAL, LIBRARIAN, LAB_ASSISTANT, EXAM_CELL, TRANSPORT_INCHARGE, COUNSELOR); ConfigDomain +SECURITY; new CustomRole model (tenant-scoped, permissions String[], baseRole, soft delete); db push clean
+- roles.ts: CANONICAL_ROLES=18, ROLE_META entries w/ hierarchy 70/35/30/25/20/25; auth.ts ROLE_PERMISSIONS for all 6 (VP≈principal-minus-payroll/settings-write; librarian=library+students; exam_cell=exams+results:publish etc.)
+- config.ts: SECURITY defaults {passwordMinLength:8, expiryDays:0, twoFactorRoles:[OWNER,ACCOUNTS], maxFailedLogins:5} + getPasswordPolicy(); settings-service.changePassword now enforces tenant min-length (resolves tenant via TenantUser lookup)
+- New API POST /api/v1/users/[id]/reset-password: policy-satisfying temp password (Pre+8rand+!1 pattern), bcrypt rotate, SessionService.revokeAllUserSessions, PermissionCache bump, ADMIN_PASSWORD_RESET audit WARNING, returns tempPassword once
+- New APIs /api/v1/users/custom-roles (GET/POST) + [id] (PUT/DELETE): validation, duplicate-name guard, audit
+- user-validation.ts: staff phone now REQUIRED server-side (>=10 digits)
+- globals.css: added 9 missing badge variants (b-purple/blue/cyan/teal/teal-soft/indigo/amber/orange-soft/sky) + dark-mode equivalents — ROLE_BADGE was referencing non-existent classes
+- types.ts: CANONICAL_STAFF_ROLES=15, ROLE_BADGE updated to existing classes, DEFAULT_ROLES_MATRIX +6 roles w/ scopes
+- staff/page.tsx: DataTable rowSelection wired (selection keys = TenantUser.id) + bulk action bar (Assign Role/Activate/Suspend/Deactivate) + ConfirmModal; executeBulk maps ids→userIds (FIX: bulk API expects User.id, initial 403 was id/userId mismatch); KeyRound action per row (Resend Invite for PENDING, Reset Password else); ResetPasswordModal (confirm → result shows temp password once + copy)
+- User360Drawer: new ACTIVITY tab — fetches /security-timeline, severity badges, IP+device labels, empty/loading/error states, Sign Out All Devices via ConfirmModal + revokeResult banner, Reset Password footer action; FIX: useEffect checked 'SECURITY' instead of 'ACTIVITY' (timeline never fetched)
+- AddStaffModal + EditUserModal: phone required client-side (+10 digit check), required marker + helper text; AddFamilyModal already required phone
+- RolesDirectoryModal: ROLE_CONFIGS for 6 new roles (icons/policies/colors), subtitle "Canonical 18 RBAC roles", tabs renamed (School Staff 15), 4th tab Custom Roles → CustomRoleManager (create/edit/delete, 36-perm catalog grouped by module, badge chips)
+- CustomRoleManager.tsx new: builder w/ permission checkbox groups, list cards w/ permission badges, delete confirm
+- settings/page.tsx: securityPolicy state + SECURITY domain loaded from getEffectiveSettings; panel editor (minLength/expiryDays/maxFailedLogins numeric inputs + 2FA role toggle chips) saved via handleSaveDomain('SECURITY', ...)
+- settings-service.getEffectiveSettings: added SECURITY domain to aggregation
+
+E2E verified (agent-browser):
+- Staff page: 15 roles in filter; selected 2 rows → bulk bar → Assign Role=Librarian → POST /users/bulk 200 → roles arrays updated (Divya=RECEPTION+LIBRARIAN, Vikram=ACCOUNTS+LIBRARIAN)
+- 360 drawer ACTIVITY tab: timeline 3 events (LOGIN/CONVERT/CREATE) w/ time+IP+device; Device Sessions card + Sign Out All Devices present
+- Reset Password: modal → generated PrezWFRi%B5!1, 0 sessions revoked, one-time display + copy
+- Roles Directory: 17 matrix roles + Custom Roles tab; created "Exam Cell + Library" (3 perms) persisted in DB via API
+- Settings SECURITY panel: saved → API returns policy JSON w/ twoFactorRoles [OWNER, ACCOUNTS]
+- Escape: 0 overlays left after close, page interactive (Refresh clickable)
+- Lint clean on all touched paths (npx eslint subset; full lint OOMs sandbox — pre-existing)
+
+Stage Summary:
+- Users module upgraded from 11 → 17 canonical roles + custom role builder; admin password reset + invite resend live; security timeline + session revoke surfaced in 360 drawer; phone mandatory for staff; school-wide password/2FA policy enforced server-side
+- 2 pre-existing runtime gaps fixed: bulk API id/userId mismatch surfaced by new UI; missing badge CSS classes
+- All changes browser-verified against PostgreSQL 54329

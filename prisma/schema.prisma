@@ -65,6 +65,7 @@ model Tenant {
   timelineEntries        TimelineEntry[]
   backgroundJobs         BackgroundJob[]
   documentTemplates      DocumentTemplate[]
+  customRoles            CustomRole[]
   offers                 AdmissionOffer[]
   curriculums            Curriculum[]
   curriculumLearningAreas CurriculumLearningArea[]
@@ -945,6 +946,27 @@ model DocumentTemplate {
   @@map("document_templates")
 }
 
+/// School-defined custom role (permission set) — assignable via per-user permission overrides
+model CustomRole {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  description   String?
+  permissions   String[] // e.g. ["library:read", "library:write"]
+  baseRole      UserRole? // optional canonical role this custom role extends
+  isSystem      Boolean  @default(false)
+  createdById   String?
+  createdByName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@map("custom_roles")
+}
+
 /// Persistent setup state machine — exactly one per tenant (M00 §3)
 model SchoolSetup {
   id               String      @id @default(uuid())
@@ -1248,6 +1270,13 @@ enum UserRole {
   GUARDIAN
   PLATFORM_ADMIN
   COORDINATOR
+  // K-12 extended staff roles (PreOne Plus)
+  VICE_PRINCIPAL
+  LIBRARIAN
+  LAB_ASSISTANT
+  EXAM_CELL
+  TRANSPORT_INCHARGE
+  COUNSELOR
   // Legacy backward-compatibility variants
   HELPER
   ACCOUNTANT
@@ -1619,6 +1648,7 @@ enum ConfigDomain {
   BRANDING
   INVENTORY
   MOOD_ENVIRONMENT
+  SECURITY
   PROMOTION
 }
 
