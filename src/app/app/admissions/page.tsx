@@ -15,10 +15,32 @@ import { DataTable, RowAction } from '@/components/preone/DataTable'
 import { Modal } from '@/components/preone/Modal'
 import { DatePicker, MaskedInput, EnterNav, Wizard } from '@/components/preone/forms'
 import { useToast } from '@/components/preone/Toast'
-import { FunnelChart } from '@/components/preone/Chart'
+import { FunnelChart, LineChart, BarChart } from '@/components/preone/Chart'
 import { fmtDate, enumLabel } from '@/lib/format'
 
 // ── Master Types ─────────────────────────────────────────────────────────────
+/** Shape returned by GET /api/v1/admissions/analytics (server-side aggregation) */
+interface AdmissionsAnalyticsData {
+  range: { from: string; to: string }
+  filters: { branchId?: string; programType?: string }
+  funnel: { step: number; key: string; label: string; count: number; dropFromPrevious: number; conversionFromPrevious: number; conversionFromStart: number }[]
+  monthlyTrends: { month: string; label: string; enquiries: number; enrollments: number }[]
+  sourceRoi: { source: string; leads: number; applications: number; enrolled: number; conversionRate: number; avgDaysToConvert: number | null }[]
+  counsellorBoard: { userId: string; name: string; assigned: number; converted: number; followUpsDue: number; conversionRate: number }[]
+  aging: { bucket: string; count: number }[]
+  stuckApplications: { id: string; applicationNumber: string; childName: string; programType: string; status: string; daysInStage: number }[]
+  offerInsights: {
+    total: number; issued: number; accepted: number; declined: number; expired: number; cancelled: number
+    acceptanceRate: number; avgHoursToAccept: number | null
+    declineReasons: { reason: string; count: number }[]
+  }
+  capacityForecast: { programType: string; label: string; sections: number; capacity: number; enrolled: number; availableSeats: number; pipelineActive: number; waitlisted: number; projectedFillPercent: number }[]
+  speedMetrics: { avgFirstResponseHours: number | null; visitsScheduled: number; visitsCompleted: number; visitsMissed: number; visitNoShowRate: number; followUpsDueToday: number }
+  lostReasons: { reason: string; count: number }[]
+  sources: string[]
+  totals: { leads: number; applications: number; enrolled: number; leadToEnrollRate: number }
+}
+
 interface AcademicSessionOption {
   id: string
   name: string
@@ -178,7 +200,7 @@ const NAV_TABS = [
   { key: 'applications', label: 'Applications' },
   { key: 'waitlist', label: 'Waiting List' },
   { key: 'admissions', label: 'Classroom Placements' },
-  { key: 'reports', label: 'Reports' },
+  { key: 'reports', label: 'Analytics' },
 ]
 
 // ── Canonical 12-Stage Preschool Admission Journey ───────────────────────────
@@ -472,6 +494,43 @@ export default function AdmissionsPage() {
   const [appProgramType, setAppProgramType] = useState('NURSERY')
   const [appStep, setAppStep] = useState(0)
   const [appSummary, setAppSummary] = useState<{ k: string; v: string }[]>([])
+
+  // ── Admission Analytics (server-side aggregation) ──
+  const [analytics, setAnalytics] = useState<AdmissionsAnalyticsData | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsRange, setAnalyticsRange] = useState<'12M' | '90D' | 'CUSTOM'>('12M')
+  const [analyticsFrom, setAnalyticsFrom] = useState('')
+  const [analyticsTo, setAnalyticsTo] = useState('')
+
+  useEffect(() => {
+    if (tab !== 'reports') return
+    let cancelled = false
+    async function loadAnalytics() {
+      setAnalyticsLoading(true)
+      try {
+        const params = new URLSearchParams()
+        if (selectedBranchId) params.set('branchId', selectedBranchId)
+        if (filterProgram) params.set('programType', filterProgram)
+        if (analyticsRange === 'CUSTOM' && analyticsFrom) params.set('from', new Date(analyticsFrom).toISOString())
+        if (analyticsRange === 'CUSTOM' && analyticsTo) params.set('to', new Date(`${analyticsTo}T23:59:59`).toISOString())
+        if (analyticsRange === '90D') {
+          const from = new Date()
+          from.setDate(from.getDate() - 90)
+          params.set('from', from.toISOString())
+        }
+        const res = await fetch(`/api/v1/admissions/analytics?${params.toString()}`).then((r) => r.json())
+        if (!cancelled && res.success) setAnalytics(res.data)
+      } catch (err) {
+        console.error('Failed to load admissions analytics:', err)
+      } finally {
+        if (!cancelled) setAnalyticsLoading(false)
+      }
+    }
+    loadAnalytics()
+    return () => {
+      cancelled = true
+    }
+  }, [tab, selectedBranchId, filterProgram, analyticsRange, analyticsFrom, analyticsTo])
 
   // Computed age for application wizard live feedback
   const appAgeMonths = useMemo(() => calculateAgeMonths(appDob), [appDob])
@@ -3185,17 +3244,17 @@ export default function AdmissionsPage() {
                       <EmptyState
                         illustration="enquiries"
                         eyebrow="Admissions"
-                        title={enquirySearch ? `No enquiries match "${enquirySearch}"` : 'No enquiries yet'}
+                        title={searchQuery ? `No enquiries match "${searchQuery}"` : 'No enquiries yet'}
                         description={
-                          enquirySearch
+                          searchQuery
                             ? 'Check for spelling mistakes or clear your search to view all enquiries.'
                             : 'Your admissions pipeline is ready. Register your first parent enquiry to begin tracking prospective families.'
                         }
                         action={
-                          enquirySearch
+                          searchQuery
                             ? {
                                 label: 'Clear Search',
-                                onClick: () => setEnquirySearch(''),
+                                onClick: () => setSearchQuery(''),
                                 variant: 'secondary',
                               }
                             : {
@@ -3276,17 +3335,17 @@ export default function AdmissionsPage() {
                 compact
                 illustration="enquiries"
                 eyebrow="Admissions"
-                title={enquirySearch ? `No enquiries match "${enquirySearch}"` : 'No enquiries yet'}
+                title={searchQuery ? `No enquiries match "${searchQuery}"` : 'No enquiries yet'}
                 description={
-                  enquirySearch
+                  searchQuery
                     ? 'Check for spelling mistakes or clear your search to view all enquiries.'
                     : 'Your admissions pipeline is ready. Register your first parent enquiry to begin tracking prospective families.'
                 }
                 action={
-                  enquirySearch
+                  searchQuery
                     ? {
                         label: 'Clear Search',
-                        onClick: () => setEnquirySearch(''),
+                        onClick: () => setSearchQuery(''),
                         variant: 'secondary',
                       }
                     : {
@@ -4409,65 +4468,363 @@ export default function AdmissionsPage() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          G. REPORTS WORKSPACE (CRM Analytics & Conversion Funnel)
+          G. ANALYTICS WORKSPACE (Admission Analytics 2.0 — server-side aggregated)
       ═══════════════════════════════════════════════════════════════════════ */}
       {tab === 'reports' && (
         <div className="space-y-5">
-          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs">
-            <h3 className="text-base font-bold text-foreground">
-              Admissions Conversion Funnel
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 mb-4">
-              Conversion rates across the 9 stages of the canonical journey
-            </p>
-
-            <FunnelChart
-              data={[
-                { label: 'Enquiries', value: enquiries?.length || 0 },
-                { label: 'Followed Up', value: enquiries?.filter((e) => e.status !== 'NEW').length || 0 },
-                { label: 'Campus Visits', value: enquiries?.filter((e) => e.status === 'QUALIFIED').length || 0 },
-                { label: 'Applications', value: applications?.length || 0 },
-                { label: 'Approved', value: applications?.filter((a) => ['APPROVED', 'OFFER_SENT', 'OFFER_ACCEPTED', 'ENROLLED'].includes(a.status)).length || 0 },
-                { label: 'Offers Sent', value: applications?.filter((a) => ['OFFER_SENT', 'OFFER_ACCEPTED', 'ENROLLED'].includes(a.status)).length || 0 },
-                { label: 'Parent Accepted', value: applications?.filter((a) => ['OFFER_ACCEPTED', 'ENROLLED'].includes(a.status)).length || 0 },
-                { label: 'Enrolled Students', value: applications?.filter((a) => ['ENROLLED', 'ADMITTED'].includes(a.status)).length || 0 },
+          {/* Filter bar */}
+          <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs flex flex-wrap items-center gap-x-3 gap-y-2">
+            <BarChart3 size={16} className="text-primary shrink-0" />
+            <div className="mr-auto">
+              <span className="text-sm font-bold text-foreground">Admission Analytics</span>
+              <span className="text-xs text-muted-foreground hidden md:inline"> · aggregated server-side from live data</span>
+            </div>
+            <Segmented
+              options={[
+                { key: '12M', label: 'Last 12 Months' },
+                { key: '90D', label: 'Last 90 Days' },
+                { key: 'CUSTOM', label: 'Custom' },
               ]}
+              value={analyticsRange}
+              onChange={(k) => setAnalyticsRange(k as '12M' | '90D' | 'CUSTOM')}
             />
+            {analyticsRange === 'CUSTOM' && (
+              <span className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={analyticsFrom}
+                  onChange={(e) => setAnalyticsFrom(e.target.value)}
+                  className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+                  aria-label="Analytics from date"
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <input
+                  type="date"
+                  value={analyticsTo}
+                  onChange={(e) => setAnalyticsTo(e.target.value)}
+                  className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+                  aria-label="Analytics to date"
+                />
+              </span>
+            )}
+            {selectedBranchId && (
+              <span className="text-xs text-muted-foreground border border-border rounded-full px-2.5 py-1">
+                {branches.find((b) => b.id === selectedBranchId)?.name ?? 'Branch'} scope
+              </span>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-            {/* Program Breakdown */}
-            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
-              <h4 className="text-sm font-bold text-foreground mb-3">Program Distribution</h4>
-              <div className="divide-y divide-border/60">
-                {programs.map((p) => {
-                  const count = applications?.filter((a) => a.programType === p.programType).length || 0
-                  return (
-                    <div key={p.id} className="flex items-center justify-between py-2 text-xs">
-                      <span className="font-medium text-foreground">{p.name}</span>
-                      <strong className="text-muted-foreground font-mono">{count} applications</strong>
-                    </div>
-                  )
-                })}
-              </div>
+          {analyticsLoading && !analytics && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
             </div>
+          )}
 
-            {/* Lead Sources */}
-            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
-              <h4 className="text-sm font-bold text-foreground mb-3">Lead Sources</h4>
-              <div className="divide-y divide-border/60">
-                {['WALK_IN', 'PHONE', 'WEBSITE', 'REFERRAL', 'SOCIAL_MEDIA'].map((src) => {
-                  const count = enquiries?.filter((e) => e.source === src).length || 0
-                  return (
-                    <div key={src} className="flex items-center justify-between py-2 text-xs">
-                      <span className="font-medium text-foreground">{src.replace(/_/g, ' ')}</span>
-                      <strong className="text-muted-foreground font-mono">{count} leads</strong>
-                    </div>
-                  )
-                })}
+          {!analyticsLoading && !analytics && (
+            <EmptyState
+              icon={<BarChart3 size={40} className="text-muted-foreground" />}
+              title="Analytics unavailable"
+              description="Could not load admissions analytics. Check your connection and try switching tabs."
+            />
+          )}
+
+          {analytics && (
+            <>
+              {/* Totals strip */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Enquiries', value: analytics.totals.leads, sub: 'in selected range', tone: 'text-foreground' },
+                  { label: 'Applications', value: analytics.totals.applications, sub: 'forms submitted', tone: 'text-foreground' },
+                  { label: 'Enrolled', value: analytics.totals.enrolled, sub: 'admissions completed', tone: 'text-emerald-600 dark:text-emerald-400' },
+                  { label: 'Enquiry → Enrolled', value: `${analytics.totals.leadToEnrollRate}%`, sub: 'overall conversion', tone: 'text-primary' },
+                ].map((c) => (
+                  <div key={c.label} className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+                    <p className="text-xs text-muted-foreground">{c.label}</p>
+                    <p className={`text-2xl font-bold font-mono mt-1 ${c.tone}`}>{c.value}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{c.sub}</p>
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
+
+              {/* 12-Stage Funnel */}
+              <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs">
+                <h3 className="text-base font-bold text-foreground">12-Stage Admission Funnel</h3>
+                <p className="text-xs text-muted-foreground mt-0.5 mb-4">
+                  Every stage of the real admission journey — spot exactly where parents drop off
+                </p>
+                <FunnelChart
+                  data={analytics.funnel.map((s) => ({ label: s.label, value: s.count }))}
+                  height={340}
+                />
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-muted-foreground border-b border-border/60">
+                        <th className="py-2 pr-3 font-medium">#</th>
+                        <th className="py-2 pr-3 font-medium">Stage</th>
+                        <th className="py-2 pr-3 font-medium text-right">Reached</th>
+                        <th className="py-2 pr-3 font-medium text-right">From Prev.</th>
+                        <th className="py-2 pr-3 font-medium text-right">Dropped</th>
+                        <th className="py-2 font-medium text-right">Overall</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.funnel.map((s) => (
+                        <tr key={s.key} className="border-b border-border/40 last:border-0">
+                          <td className="py-2 pr-3 font-mono text-muted-foreground">{String(s.step).padStart(2, '0')}</td>
+                          <td className="py-2 pr-3 font-medium text-foreground">{s.label}</td>
+                          <td className="py-2 pr-3 text-right font-mono text-foreground">{s.count}</td>
+                          <td className={`py-2 pr-3 text-right font-mono ${s.conversionFromPrevious < 50 && s.step > 1 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+                            {s.conversionFromPrevious}%
+                          </td>
+                          <td className="py-2 pr-3 text-right font-mono text-rose-600 dark:text-rose-400">
+                            {s.dropFromPrevious > 0 ? `−${s.dropFromPrevious}` : '—'}
+                          </td>
+                          <td className="py-2 text-right font-mono text-muted-foreground">{s.conversionFromStart}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Monthly Trends */}
+              <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs">
+                <h3 className="text-base font-bold text-foreground">Monthly Trends</h3>
+                <p className="text-xs text-muted-foreground mt-0.5 mb-4">
+                  Enquiries vs real enrollments (Students module admission dates) — plan staffing around admission season
+                </p>
+                <LineChart
+                  data={analytics.monthlyTrends.map((m) => ({ label: m.label, value: m.enquiries, secondaryValue: m.enrollments }))}
+                  height={230}
+                  ariaLabel="Monthly enquiries vs enrollments trend"
+                />
+                <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-primary inline-block" /> Enquiries</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-1.5 rounded-full bg-[var(--info)] inline-block" /> Enrollments</span>
+                </div>
+              </div>
+
+              {/* Source ROI */}
+              <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs">
+                <h3 className="text-base font-bold text-foreground">Lead Source ROI</h3>
+                <p className="text-xs text-muted-foreground mt-0.5 mb-4">
+                  Which channels actually fill seats — invest your outreach budget where conversion is proven
+                </p>
+                {analytics.sourceRoi.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-4 text-center">No enquiries recorded in this range yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-muted-foreground border-b border-border/60">
+                          <th className="py-2 pr-3 font-medium">Source</th>
+                          <th className="py-2 pr-3 font-medium text-right">Leads</th>
+                          <th className="py-2 pr-3 font-medium text-right">Applications</th>
+                          <th className="py-2 pr-3 font-medium text-right">Enrolled</th>
+                          <th className="py-2 pr-3 font-medium text-right">Conversion</th>
+                          <th className="py-2 font-medium text-right">Avg Days to Enroll</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.sourceRoi.map((s) => (
+                          <tr key={s.source} className="border-b border-border/40 last:border-0">
+                            <td className="py-2 pr-3 font-medium text-foreground">{enumLabel(s.source)}</td>
+                            <td className="py-2 pr-3 text-right font-mono text-foreground">{s.leads}</td>
+                            <td className="py-2 pr-3 text-right font-mono text-muted-foreground">{s.applications}</td>
+                            <td className="py-2 pr-3 text-right font-mono text-emerald-600 dark:text-emerald-400">{s.enrolled}</td>
+                            <td className="py-2 pr-3 text-right">
+                              <span className="flex items-center gap-2 justify-end">
+                                <span className="hidden sm:block w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                                  <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(s.conversionRate, 100)}%` }} />
+                                </span>
+                                <span className="font-mono text-foreground">{s.conversionRate}%</span>
+                              </span>
+                            </td>
+                            <td className="py-2 text-right font-mono text-muted-foreground">{s.avgDaysToConvert !== null ? `${s.avgDaysToConvert}d` : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+                {/* Counsellor Leaderboard */}
+                <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
+                  <h4 className="text-sm font-bold text-foreground mb-1">Counsellor Leaderboard</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Assigned enquiries → conversions, with overdue follow-ups</p>
+                  {analytics.counsellorBoard.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-4 text-center">No enquiries assigned to counsellors yet.</p>
+                  ) : (
+                    <div className="divide-y divide-border/60">
+                      {analytics.counsellorBoard.map((c, i) => (
+                        <div key={c.userId} className="flex items-center gap-3 py-2.5 text-xs">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold shrink-0 ${i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' : 'bg-muted text-muted-foreground'}`}>
+                            {i + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-foreground truncate">{c.name}</p>
+                            <p className="text-muted-foreground">{c.assigned} assigned · {c.followUpsDue} follow-ups due</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-mono font-bold text-foreground">{c.converted} converted</p>
+                            <p className="font-mono text-muted-foreground">{c.conversionRate}%</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Speed Metrics */}
+                <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
+                  <h4 className="text-sm font-bold text-foreground mb-1">Parent Experience Speed</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Fast responses win modern-school parents</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'Avg First Response', value: analytics.speedMetrics.avgFirstResponseHours !== null ? `${analytics.speedMetrics.avgFirstResponseHours}h` : '—', tone: analytics.speedMetrics.avgFirstResponseHours !== null && analytics.speedMetrics.avgFirstResponseHours <= 24 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground' },
+                      { label: 'Visit No-Show Rate', value: `${analytics.speedMetrics.visitNoShowRate}%`, tone: analytics.speedMetrics.visitNoShowRate > 30 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground' },
+                      { label: 'Visits Completed', value: `${analytics.speedMetrics.visitsCompleted}/${analytics.speedMetrics.visitsScheduled}`, tone: 'text-foreground' },
+                      { label: 'Follow-ups Due', value: analytics.speedMetrics.followUpsDueToday, tone: analytics.speedMetrics.followUpsDueToday > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-foreground' },
+                    ].map((m) => (
+                      <div key={m.label} className="rounded-xl border border-border/60 bg-muted/30 p-3">
+                        <p className="text-xs text-muted-foreground">{m.label}</p>
+                        <p className={`text-lg font-bold font-mono mt-0.5 ${m.tone}`}>{m.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+                {/* Aging & Stuck */}
+                <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
+                  <h4 className="text-sm font-bold text-foreground mb-1">Aging & Stuck Applications</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Active applications by time since last movement</p>
+                  <BarChart data={analytics.aging.map((b) => ({ label: b.bucket, value: b.count }))} height={160} ariaLabel="Application aging buckets" />
+                  {analytics.stuckApplications.length > 0 && (
+                    <div className="mt-3 space-y-1.5 max-h-44 overflow-y-auto">
+                      {analytics.stuckApplications.slice(0, 6).map((s) => (
+                        <div key={s.id} className="flex items-center justify-between text-xs gap-2">
+                          <span className="font-medium text-foreground truncate">{s.childName || s.applicationNumber}</span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            <span className="text-muted-foreground">{enumLabel(s.status)}</span>
+                            <span className={`font-mono font-bold ${s.daysInStage >= 30 ? 'text-rose-600 dark:text-rose-400' : s.daysInStage >= 15 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+                              {s.daysInStage}d
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Offer Insights */}
+                <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
+                  <h4 className="text-sm font-bold text-foreground mb-1">Offer Insights</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Acceptance health & why parents decline</p>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    {[
+                      { label: 'Issued', value: analytics.offerInsights.issued },
+                      { label: 'Accepted', value: analytics.offerInsights.accepted, tone: 'text-emerald-600 dark:text-emerald-400' },
+                      { label: 'Declined', value: analytics.offerInsights.declined, tone: 'text-rose-600 dark:text-rose-400' },
+                    ].map((m) => (
+                      <div key={m.label} className="rounded-xl border border-border/60 bg-muted/30 p-3 text-center">
+                        <p className="text-xs text-muted-foreground">{m.label}</p>
+                        <p className={`text-lg font-bold font-mono mt-0.5 ${m.tone ?? 'text-foreground'}`}>{m.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-xs mb-3">
+                    <span className="text-muted-foreground">Acceptance rate</span>
+                    <strong className="font-mono text-foreground">{analytics.offerInsights.acceptanceRate}%</strong>
+                  </div>
+                  {analytics.offerInsights.declineReasons.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">Top decline reasons</p>
+                      {analytics.offerInsights.declineReasons.map((d) => (
+                        <div key={d.reason} className="flex items-center justify-between text-xs gap-2">
+                          <span className="text-foreground truncate">{enumLabel(d.reason)}</span>
+                          <strong className="font-mono text-muted-foreground shrink-0">{d.count}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Capacity Forecast */}
+              <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs">
+                <h3 className="text-base font-bold text-foreground">Capacity Forecast</h3>
+                <p className="text-xs text-muted-foreground mt-0.5 mb-4">
+                  Live seats (Classrooms × Students) vs active pipeline & waitlist depth per program
+                </p>
+                {analytics.capacityForecast.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-4 text-center">No active classrooms configured yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-muted-foreground border-b border-border/60">
+                          <th className="py-2 pr-3 font-medium">Program</th>
+                          <th className="py-2 pr-3 font-medium text-right">Sections</th>
+                          <th className="py-2 pr-3 font-medium text-right">Capacity</th>
+                          <th className="py-2 pr-3 font-medium text-right">Enrolled</th>
+                          <th className="py-2 pr-3 font-medium text-right">Seats Left</th>
+                          <th className="py-2 pr-3 font-medium text-right">In Pipeline</th>
+                          <th className="py-2 pr-3 font-medium text-right">Waitlisted</th>
+                          <th className="py-2 font-medium text-right">Projected Fill</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.capacityForecast.map((c) => (
+                          <tr key={c.programType} className="border-b border-border/40 last:border-0">
+                            <td className="py-2 pr-3 font-medium text-foreground">{c.label}</td>
+                            <td className="py-2 pr-3 text-right font-mono text-muted-foreground">{c.sections}</td>
+                            <td className="py-2 pr-3 text-right font-mono text-foreground">{c.capacity}</td>
+                            <td className="py-2 pr-3 text-right font-mono text-foreground">{c.enrolled}</td>
+                            <td className={`py-2 pr-3 text-right font-mono ${c.availableSeats === 0 ? 'text-rose-600 dark:text-rose-400 font-bold' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                              {c.availableSeats}
+                            </td>
+                            <td className="py-2 pr-3 text-right font-mono text-muted-foreground">{c.pipelineActive}</td>
+                            <td className="py-2 pr-3 text-right font-mono text-muted-foreground">{c.waitlisted}</td>
+                            <td className="py-2 text-right">
+                              <span className="flex items-center gap-2 justify-end">
+                                <span className="hidden sm:block w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                                  <span
+                                    className={`block h-full rounded-full ${c.projectedFillPercent >= 100 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                                    style={{ width: `${Math.min(c.projectedFillPercent, 100)}%` }}
+                                  />
+                                </span>
+                                <span className="font-mono text-foreground">{c.projectedFillPercent}%</span>
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Lost Reasons */}
+              {analytics.lostReasons.length > 0 && (
+                <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
+                  <h4 className="text-sm font-bold text-foreground mb-3">Why Enquiries Are Lost</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {analytics.lostReasons.slice(0, 6).map((l) => (
+                      <div key={l.reason} className="rounded-xl border border-border/60 bg-muted/30 p-3 flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-foreground truncate">{enumLabel(l.reason)}</span>
+                        <strong className="font-mono text-sm text-rose-600 dark:text-rose-400 shrink-0">{l.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
