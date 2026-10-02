@@ -111,3 +111,22 @@ Stage Summary:
 - PreOne Plus now covers modern school workflows end-to-end: daily homework loop, campus health & medical safety, front-desk visitor/gate security, and school events with registrations
 - 8 new Prisma models, 20+ new API endpoints, 4 new UI modules, full RBAC + parent read-linked scoping
 - All changes browser-verified against PostgreSQL 54329; pushed to GitHub main
+
+---
+Task ID: 5
+Agent: main (Super Z)
+Task: Admission Analytics 2.0 — school-grade CRM analytics for the Admissions module (server-side, no hardcoding, full module connectivity), test + push
+
+Work Log:
+- Analyzed existing Admissions module: page.tsx (7.5k lines), 5 services, Lead/Application/Offer/Document models, 12-stage journey; found 10 gaps incl. phantom SOCIAL_MEDIA source bug, 8v12 stage funnel mismatch, client-side-only analysis, no time dimension/ROI/counsellor/aging/offer/capacity analytics
+- Built src/lib/admissions/analytics-service.ts: 24 concurrent Prisma aggregations, all server-side; 12-stage funnel (cumulative milestone semantics, mid-funnel entries capped at 100%), monthly trends (Leads + Students.admissionDate), source ROI (per-source leads/apps/enrolled/avg-days), counsellor leaderboard, aging buckets + stuck list, offer insights (acceptance rate, decline reasons from offers), capacity forecast (Classrooms x Student occupancy x pipeline x waitlist), speed metrics (first-response, visit no-show; dangling visit rows excluded), lost reasons (audit trail), canonical source catalogue (zero hardcode)
+- New API GET /api/v1/admissions/analytics (withApi + requireApi admissions:read, from/to/branchId/programType filters)
+- UI: Reports tab renamed Analytics; server-fetched with 12M/90D/custom range + branch scope; 9 widget sections (totals strip, funnel+stage table, dual-line trends, source ROI table w/ conversion bars, counsellor leaderboard, speed tiles, aging BarChart+stuck list, offer tiles+decline reasons, capacity forecast table w/ projected fill bars, lost reasons grid); charts reuse existing FunnelChart/LineChart/BarChart
+- Fixed pre-existing runtime bug: enquiries tab used undeclared enquirySearch/setEnquirySearch (renamed searchQuery) — would crash on empty-state render
+- Tests: scripts/verify-admission-analytics.ts (52/52 passed vs PG 54329: tenant isolation, funnel math, ROI conversion 20% WALK_IN, counsellor 66.7%, aging buckets, offer 50% acceptance/3h, capacity 20/1/19, no-show 50%, lost FEES, trends, range filter); scripts/http-test-analytics.sh (12/12 + 401 anon + range); browser E2E via agent-browser (login -> admissions -> Analytics, all 9 widgets, 3 screenshots)
+- Iterated: Program has no branchId; FollowUp requires domain=ADMISSION; Errors.system not serverError; memberships relation for User->tenant; enum-typed status arrays; pipe-vs-heredoc stdin conflict in test script
+
+Stage Summary:
+- Admissions module now has modern-school analytics: every number server-aggregated from live DB, cross-module joined (Students/Classrooms/Users/Offers/Audit), zero hardcoded catalogues
+- Commit d74b759 pushed to GitHub main (6 files, +1657); lint+tsc clean; all evidence scripts persisted in scripts/
+- Note: GitHub reports 2 high dependabot vulnerabilities on repo (pre-existing deps, not from this change)
