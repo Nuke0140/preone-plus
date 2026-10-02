@@ -140,6 +140,16 @@ model Tenant {
   hostelRooms       HostelRoom[]
   hostelAllocations HostelAllocation[]
 
+  // PreOne Plus: Modern School modules
+  homeworks            Homework[]
+  homeworkSubmissions  HomeworkSubmission[]
+  healthRecords        HealthRecord[]
+  sickBayVisits        SickBayVisit[]
+  visitorLogs          VisitorLog[]
+  gatePasses           GatePass[]
+  schoolEvents         SchoolEvent[]
+  eventRegistrations   EventRegistration[]
+
   @@map("tenants")
 }
 
@@ -191,6 +201,8 @@ model Branch {
   pickupAuthorizations        TransportPickupAuthorization[]
   transportSecurityEvents     TransportSecurityEvent[]
   hostelRooms                 HostelRoom[]
+  visitorLogs                 VisitorLog[]
+  schoolEvents                SchoolEvent[]
 
   // Reports & Analytics Relations
   savedReports                SavedReport[]
@@ -232,6 +244,13 @@ model User {
   timetableSlots          TimetableSlot[] @relation("SlotTeacher")
   bookIssuesAsStaff       BookIssue[]     @relation("BookIssueStaff")
   booksIssuedBy           BookIssue[]     @relation("BookIssuedBy")
+  taughtHomeworks         Homework[]      @relation("HomeworkTeacher")
+  gradedHomeworkSubmissions HomeworkSubmission[] @relation("HomeworkGradedBy")
+  healthRecordsRecorded   HealthRecord[]  @relation("HealthRecordedBy")
+  sickBayVisitsRecorded   SickBayVisit[]  @relation("SickBayRecordedBy")
+  visitorCheckouts        VisitorLog[]    @relation("VisitorCheckedOutBy")
+  requestedGatePasses     GatePass[]      @relation("GatePassRequestedBy")
+  approvedGatePasses      GatePass[]      @relation("GatePassApprover")
 
   @@map("users")
 }
@@ -347,6 +366,7 @@ model Classroom {
   examSchedules     ExamSchedule[]
   timetableSlots    TimetableSlot[]
   reportCards       ReportCard[]
+  homeworks         Homework[]
 
   @@unique([tenantId, code])
   @@index([branchId])
@@ -394,6 +414,11 @@ model Student {
   reportCards       ReportCard[]
   bookIssues        BookIssue[]
   hostelAllocations HostelAllocation[]
+  homeworkSubmissions HomeworkSubmission[]
+  healthRecords       HealthRecord[]
+  sickBayVisits       SickBayVisit[]
+  gatePasses          GatePass[]
+  eventRegistrations  EventRegistration[]
 
   @@unique([tenantId, admissionNo])
   @@index([tenantId, branchId])
@@ -1069,6 +1094,7 @@ model Subject {
   classroomMappings ClassroomSubject[]
   examSchedules     ExamSchedule[]
   timetableSlots    TimetableSlot[]
+  homeworks         Homework[]
 
   @@unique([tenantId, code])
   @@index([tenantId, status])
@@ -3899,4 +3925,284 @@ model HostelAllocation {
   @@index([tenantId, studentId])
   @@index([tenantId, status])
   @@map("hostel_allocations")
+}
+
+// ── Homework & Assignments Module (modern school) ──
+
+enum HomeworkStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum HomeworkSubmissionStatus {
+  PENDING
+  SUBMITTED
+  LATE
+  GRADED
+  RETURNED
+}
+
+model Homework {
+  id              String         @id @default(uuid())
+  tenantId        String
+  classroomId     String
+  subjectId       String?
+  teacherId       String?
+  title           String
+  description     String?
+  attachmentUrl   String?
+  assignedDate    DateTime       @default(now())
+  dueDate         DateTime
+  estimatedMinutes Int?
+  status          HomeworkStatus @default(PUBLISHED)
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  classroom     Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  subject       Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacher       User?     @relation("HomeworkTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  submissions   HomeworkSubmission[]
+
+  @@index([tenantId, classroomId, dueDate])
+  @@index([tenantId, teacherId])
+  @@index([tenantId, status])
+  @@map("homeworks")
+}
+
+model HomeworkSubmission {
+  id          String                    @id @default(uuid())
+  tenantId    String
+  homeworkId  String
+  studentId   String
+  submittedAt DateTime?
+  contentUrl  String?
+  remarks     String?
+  grade       String?
+  feedback    String?
+  gradedById  String?
+  gradedAt    DateTime?
+  status      HomeworkSubmissionStatus  @default(PENDING)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  homework Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  gradedBy User?    @relation("HomeworkGradedBy", fields: [gradedById], references: [id], onDelete: SetNull)
+
+  @@unique([homeworkId, studentId])
+  @@index([tenantId, studentId])
+  @@index([tenantId, status])
+  @@map("homework_submissions")
+}
+
+// ── Health & Medical Module (modern school) ──
+
+enum HealthRecordType {
+  CHECKUP
+  VACCINATION
+  ALLERGY
+  MEDICAL_CONDITION
+  INJURY
+  DENTAL
+  VISION
+}
+
+model HealthRecord {
+  id            String            @id @default(uuid())
+  tenantId      String
+  studentId     String
+  type          HealthRecordType
+  recordDate    DateTime          @default(now())
+  summary       String
+  details       String?
+  doctorName    String?
+  clinicName    String?
+  followUpDate  DateTime?
+  isChronic     Boolean           @default(false)
+  attachmentsUrl String?
+  recordedById  String?
+  isActive      Boolean           @default(true)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  recordedBy User?   @relation("HealthRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, studentId, type])
+  @@index([tenantId, isChronic])
+  @@map("health_records")
+}
+
+model SickBayVisit {
+  id             String    @id @default(uuid())
+  tenantId       String
+  studentId      String
+  visitDate      DateTime  @default(now())
+  symptoms       String
+  temperatureC   Float?
+  actionTaken    String
+  medicationGiven String?
+  parentNotified Boolean   @default(false)
+  parentNotifiedAt DateTime?
+  returnedToClassAt DateTime?
+  recordedById   String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  recordedBy User?   @relation("SickBayRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, studentId, visitDate])
+  @@index([tenantId, visitDate])
+  @@map("sick_bay_visits")
+}
+
+// ── Front Office Module (modern school) ──
+
+enum GatePassStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  OUT
+  RETURNED
+}
+
+model VisitorLog {
+  id            String    @id @default(uuid())
+  tenantId      String
+  branchId      String?
+  visitorName   String
+  visitorPhone  String?
+  organization  String?
+  purpose       String
+  personToMeet  String?
+  badgeNumber   String?
+  idProofType   String?
+  idProofNumber String?
+  checkInAt     DateTime  @default(now())
+  checkOutAt    DateTime?
+  checkedOutById String?
+  notes         String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  checkedOutBy User? @relation("VisitorCheckedOutBy", fields: [checkedOutById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, checkInAt])
+  @@index([tenantId, visitorPhone])
+  @@map("visitor_logs")
+}
+
+model GatePass {
+  id            String         @id @default(uuid())
+  tenantId      String
+  studentId     String
+  passNumber    String
+  reason        String
+  requestedById String?
+  approvedById  String?
+  guardianName  String?
+  guardianPhone String?
+  outAt         DateTime?
+  expectedReturnAt DateTime?
+  status        GatePassStatus @default(REQUESTED)
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requestedBy User?  @relation("GatePassRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy User?   @relation("GatePassApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, passNumber])
+  @@index([tenantId, studentId])
+  @@index([tenantId, status])
+  @@map("gate_passes")
+}
+
+// ── Events & Activities Module (modern school) ──
+
+enum SchoolEventType {
+  SPORTS
+  CULTURAL
+  ACADEMIC
+  TRIP
+  COMPETITION
+  CELEBRATION
+  MEETING
+  WORKSHOP
+  OTHER
+}
+
+enum EventRegistrationStatus {
+  REGISTERED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
+  ABSENT
+}
+
+model SchoolEvent {
+  id                   String           @id @default(uuid())
+  tenantId             String
+  branchId             String?
+  title                String
+  type                 SchoolEventType  @default(OTHER)
+  description          String?
+  venue                String?
+  startsAt             DateTime
+  endsAt               DateTime?
+  audience             String           @default("ALL") // ALL, STUDENTS, PARENTS, STAFF
+  capacity             Int?
+  registrationRequired Boolean          @default(false)
+  registrationDeadline DateTime?
+  status               String           @default("SCHEDULED") // SCHEDULED, ONGOING, COMPLETED, CANCELLED
+  isActive             Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  deletedAt            DateTime?
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  registrations EventRegistration[]
+
+  @@index([tenantId, startsAt])
+  @@index([tenantId, type])
+  @@index([tenantId, status])
+  @@map("school_events")
+}
+
+model EventRegistration {
+  id            String                   @id @default(uuid())
+  tenantId      String
+  eventId       String
+  studentId     String
+  registeredById String?
+  registeredAt  DateTime                 @default(now())
+  status        EventRegistrationStatus  @default(REGISTERED)
+  notes         String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event    SchoolEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  student  Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, studentId])
+  @@index([tenantId, studentId])
+  @@index([tenantId, eventId])
+  @@map("event_registrations")
 }

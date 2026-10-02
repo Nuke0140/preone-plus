@@ -81,3 +81,33 @@ Stage Summary:
 - Users module upgraded from 11 → 17 canonical roles + custom role builder; admin password reset + invite resend live; security timeline + session revoke surfaced in 360 drawer; phone mandatory for staff; school-wide password/2FA policy enforced server-side
 - 2 pre-existing runtime gaps fixed: bulk API id/userId mismatch surfaced by new UI; missing badge CSS classes
 - All changes browser-verified against PostgreSQL 54329
+
+---
+Task ID: 4
+Agent: main (Super Z)
+Task: Clone github.com/Nuke0140/preone-plus → add 4 modern-school modules (Homework & Assignments, Health & Medical, Front Office, Events & Activities), full-stack with RBAC, seed demo data, push to GitHub
+
+Work Log:
+- Re-cloned repo (owner made it public), configured PAT push access, merged repo into /home/z/my-project main workspace (same layout as Task 1); bun install + pg-start.sh → PG 17.10 READY @54329
+- Prisma schema: +8 enums (HomeworkStatus, HomeworkSubmissionStatus, HealthRecordType, GatePassStatus, SchoolEventType, EventRegistrationStatus reuses pattern) + 8 models (Homework, HomeworkSubmission, HealthRecord, SickBayVisit, VisitorLog, GatePass, SchoolEvent, EventRegistration) — tenant-scoped, soft delete, snake_case @@map, money/timestamp conventions; back-relations added to Tenant/Branch/User/Classroom/Student/Subject; db push clean
+- RBAC (auth.ts): +8 permissions (homework:read/write, health:read/write, frontoffice:read/write, events:read/write) across OWNER/PRINCIPAL/VP/COORDINATOR/TEACHER/STAFF/ACCOUNTS/RECEPTIONIST/COUNSELOR (frontoffice:write = receptionist core duty, teacher gets health:write for sick-bay entries); PARENT/GUARDIAN get homework/health/events :read-linked
+- Services: src/lib/{homework,health,front-office,events}/ — homework auto pre-creates PENDING submissions for class roster, late detection vs dueDate, grade gate (PENDING cannot be graded, GRADED locked); health chronic/allergy alerts aggregation + parent-notify tracking + return-to-class; front-office visitor check-in/out (badge/ID proof) + gate pass lifecycle REQUESTED→APPROVED→OUT→RETURNED with sequential GP-YYYYMM-#### numbering + guardian verification fields; events capacity-guarded registration w/ WAITLISTED fallback + promote-from-waitlist + attendance marking
+- APIs: 9 route files under /api/v1/{homework,health,front-office,events}/... with withApi envelope + requireApi; homework/health/events GET support read-linked with server-side parent→child scoping (resolveLinkedStudentId via Guardian.studentLinks)
+- UI: 4 pages (/app/homework|health|front-office|events) — PageHead + KpiTile stats + tabs + tables/cards + create modals + submissions/registrations drawers with inline grading & attendance; apiFetch .data unwrap + success-checked toasts (fixed false-positive flash)
+- Nav + home tiles: 4 NAV_ITEMS (homework g-pink NotebookPen, health g-green Stethoscope, front-office g-sky DoorOpen, events g-yellow Trophy) + MODULE_META entries with quick actions
+- Seed: scripts/seed-modern-modules.ts — 4 homework w/ 32 submissions (graded/submitted/late/pending mix), 5 health records (2 chronic alerts) + 3 sick-bay visits (1 still in sick bay), 3 visitors (2 on campus) + 3 gate passes (one per state), 5 events (trip with waitlist, completed PTM)
+- Fixed during QA: User model has fullName (not name) in selects; missing gate-passes base route (list+POST); apiFetch returns ApiResponse wrapper (all 4 clients unwrapped .data); session lacks permissions field → client-side can(roles, perm) gating; saving-state stuck on validation errors
+
+E2E verified (agent-browser + curl):
+- Login owner@sunshine.demo/sunshine → home grid shows all 4 new tiles
+- Homework: list with completion bars (8/8), submissions modal (PENDING/SUBMITTED/GRADED states), Assign modal opens; UI create verified via API (API Test HW → auto 8 submissions)
+- Health: records tab (asthma/peanut-allergy rows), Medical Alerts (2) tab, sick-bay visits with returned/IN SICK BAY states
+- Front Office: visitors (3, check-in/out states), gate passes GP-202610-0001..3 in REQUESTED/APPROVED/OUT/RETURNED; approve + check-out actions verified via API
+- Events: 5 event cards (upcoming/past split), registrations modal (5 REGISTERED incl. waitlist-tested trip), register action verified
+- RBAC: parent@ read on homework/health/events/front-office → all 403 (no leak), read-linked 200 child-scoped; write attempts 403
+- Lint clean on all new paths
+
+Stage Summary:
+- PreOne Plus now covers modern school workflows end-to-end: daily homework loop, campus health & medical safety, front-desk visitor/gate security, and school events with registrations
+- 8 new Prisma models, 20+ new API endpoints, 4 new UI modules, full RBAC + parent read-linked scoping
+- All changes browser-verified against PostgreSQL 54329; pushed to GitHub main

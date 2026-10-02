@@ -3,6 +3,7 @@ import {
   Sparkles, Megaphone, Settings, ScrollText, Building2, Rocket,
   HeartPulse, UserCheck, CalendarCheck, Package, Bus, BarChart3,
   GraduationCap, FileCheck2, CalendarRange, BookOpen, BedDouble,
+  NotebookPen, Stethoscope, DoorOpen, Trophy,
 } from 'lucide-react'
 import type { Role } from './auth'
 import { can } from './auth'
@@ -31,6 +32,10 @@ export const NAV_ITEMS: NavItem[] = [
   { key: 'timetable', label: 'Timetable', href: '/app/timetable', icon: CalendarRange, grad: 'g-cyan', perm: 'timetable:read' },
   { key: 'library', label: 'Library', href: '/app/library', icon: BookOpen, grad: 'g-amber', perm: 'library:read' },
   { key: 'hostel', label: 'Hostel', href: '/app/hostel', icon: BedDouble, grad: 'g-lime', perm: 'hostel:read' },
+  { key: 'homework', label: 'Homework', href: '/app/homework', icon: NotebookPen, grad: 'g-pink', perm: 'homework:read' },
+  { key: 'health', label: 'Health & Medical', href: '/app/health', icon: Stethoscope, grad: 'g-green', perm: 'health:read' },
+  { key: 'front-office', label: 'Front Office', href: '/app/front-office', icon: DoorOpen, grad: 'g-sky', perm: 'frontoffice:read' },
+  { key: 'events', label: 'Events & Activities', href: '/app/events', icon: Trophy, grad: 'g-yellow', perm: 'events:read' },
   { key: 'operations', label: 'Operations', href: '/app/operations', icon: HeartPulse, grad: 'g-red', perm: 'operations:read' },
   { key: 'transport', label: 'Transport', href: '/app/transport', icon: Bus, grad: 'g-orange', perm: 'transport:read' },
   { key: 'inventory', label: 'Inventory', href: '/app/inventory', icon: Package, grad: 'g-emerald', perm: 'inventory:read' },

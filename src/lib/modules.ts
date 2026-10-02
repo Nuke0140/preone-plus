@@ -269,6 +269,42 @@ export const MODULE_META: Record<string, ModuleMeta> = {
     semanticTheme: 'green',
     quickActions: [{ label: 'Allocate room', href: '/app/hostel?tab=allocations', perm: 'hostel:write' }],
   },
+  homework: {
+    description: 'Assignments, submissions & grading',
+    tileSize: 'md',
+    semanticTheme: 'pink',
+    quickActions: [
+      { label: 'Assign homework', href: '/app/homework?tab=all', perm: 'homework:write' },
+      { label: 'Review submissions', href: '/app/homework?tab=all', perm: 'homework:write' },
+    ],
+  },
+  health: {
+    description: 'Health records, sick bay & alerts',
+    tileSize: 'md',
+    semanticTheme: 'green',
+    quickActions: [
+      { label: 'Medical alerts', href: '/app/health?tab=alerts', perm: 'health:read' },
+      { label: 'Sick bay log', href: '/app/health?tab=sickbay', perm: 'health:read' },
+    ],
+  },
+  'front-office': {
+    description: 'Visitors, gate passes & late slips',
+    tileSize: 'sm',
+    semanticTheme: 'blue',
+    quickActions: [
+      { label: 'Check in visitor', href: '/app/front-office?tab=visitors', perm: 'frontoffice:write' },
+      { label: 'Issue gate pass', href: '/app/front-office?tab=gate-passes', perm: 'frontoffice:write' },
+    ],
+  },
+  events: {
+    description: 'Sports, cultural fests, trips & meets',
+    tileSize: 'md',
+    semanticTheme: 'purple',
+    quickActions: [
+      { label: 'Create event', href: '/app/events?tab=upcoming', perm: 'events:write' },
+      { label: 'Registrations', href: '/app/events?tab=upcoming', perm: 'events:read' },
+    ],
+  },
   announcements: {
     description: 'Communicate with your community',
     tileSize: 'md',

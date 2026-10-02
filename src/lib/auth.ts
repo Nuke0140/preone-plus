@@ -46,6 +46,10 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'timetable:read', 'timetable:write',
     'library:read', 'library:write',
     'hostel:read', 'hostel:write',
+    'homework:read', 'homework:write',
+    'health:read', 'health:write',
+    'frontoffice:read', 'frontoffice:write',
+    'events:read', 'events:write',
     'reports:read', 'reports:write', 'reports:export', 'reports:custom',
   ],
   VICE_PRINCIPAL: [
@@ -67,6 +71,10 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'timetable:read', 'timetable:write',
     'library:read', 'library:write',
     'hostel:read', 'hostel:write',
+    'homework:read', 'homework:write',
+    'health:read', 'health:write',
+    'frontoffice:read', 'frontoffice:write',
+    'events:read', 'events:write',
     'reports:read', 'reports:write', 'reports:export',
   ],
   COORDINATOR: [
@@ -82,6 +90,10 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'timetable:read', 'timetable:write',
     'library:read', 'library:write',
     'hostel:read',
+    'homework:read', 'homework:write',
+    'health:read',
+    'frontoffice:read',
+    'events:read', 'events:write',
     'reports:read', 'reports:export',
   ],
   TEACHER: [
@@ -98,6 +110,10 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'timetable:read', 'timetable:write', // own class timetable management
     'library:read',
     'hostel:read',
+    'homework:read', 'homework:write', // assign + grade for own classes
+    'health:read', 'health:write', // sick-bay entries + view alerts
+    'frontoffice:read',
+    'events:read', 'events:write',
     'reports:read', 'reports:export',
   ],
   STAFF: [
@@ -108,6 +124,7 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'hr:read', 'hr:self',
     'communication:read',
     'exams:read', 'timetable:read', 'library:read', 'hostel:read',
+    'homework:read', 'health:read', 'frontoffice:read', 'events:read',
     'reports:read',
   ],
   ACCOUNTS: [
@@ -120,6 +137,7 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'hr:read', 'payroll:process', 'hr:self',
     'transport:read',
     'library:read', 'hostel:read',
+    'homework:read', 'health:read', 'frontoffice:read', 'events:read',
     'reports:read', 'reports:export',
   ],
   RECEPTIONIST: [
@@ -132,6 +150,8 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'inventory:read', 'inventory:request',
     'hr:self',
     'exams:read', 'timetable:read', 'library:read',
+    'frontoffice:read', 'frontoffice:write', // visitors + gate passes = core desk duty
+    'homework:read', 'health:read', 'events:read',
   ],
   ATTENDANT: [
     'attendance:read',
@@ -182,6 +202,8 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'timeline:read',
     'operations:read', 'operations:write',
     'communication:read', 'communication:broadcast',
+    'health:read', // wellbeing context for counseling
+    'homework:read', 'events:read',
     'hr:self',
     'reports:read',
   ],
@@ -205,6 +227,9 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'exams:read-linked',      // child's exam schedule + report cards
     'timetable:read-linked',  // child's class timetable
     'library:read-linked',    // child's book issues
+    'homework:read-linked',   // child's homework + submissions
+    'health:read-linked',     // child's health records + sick-bay visits
+    'events:read-linked',     // school events + child's registrations
   ],
   GUARDIAN: [
     'timeline:read',
@@ -220,6 +245,9 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'exams:read-linked',
     'timetable:read-linked',
     'library:read-linked',
+    'homework:read-linked',
+    'health:read-linked',
+    'events:read-linked',
   ],
   // Legacy aliases
   HELPER: [
