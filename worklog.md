@@ -130,3 +130,21 @@ Stage Summary:
 - Admissions module now has modern-school analytics: every number server-aggregated from live DB, cross-module joined (Students/Classrooms/Users/Offers/Audit), zero hardcoded catalogues
 - Commit d74b759 pushed to GitHub main (6 files, +1657); lint+tsc clean; all evidence scripts persisted in scripts/
 - Note: GitHub reports 2 high dependabot vulnerabilities on repo (pre-existing deps, not from this change)
+
+---
+Task ID: 6
+Agent: main (Super Z)
+Task: Fix 2 high-severity Dependabot vulnerabilities (both sharp), test, push
+
+Work Log:
+- Fetched open Dependabot alerts via GitHub API: both HIGH on sharp — alert #1 (sharp < 0.35.0, fixed in 0.35.0) and alert #2 (GHSA-rgj7-g3m4-5g8c, libheif RCE-class heap overflow, fixed in 0.35.4)
+- Upgraded direct dependency sharp ^0.34.3 -> ^0.35.4 in package.json; bun install resolved 0.35.5 (libvips 8.18.7)
+- Found next.js still pinned vulnerable sharp 0.34.5 via its optionalDependencies (sharp ^0.34.4) — nested node_modules/next/node_modules/sharp would be used by next/image optimizer (same AVIF/libheif attack path)
+- Added package.json overrides { "sharp": "^0.35.4" } so the whole tree resolves 0.35.5; bun.lock now has zero sharp@0.34 entries; removed stale nested copy; verified next resolves top-level 0.35.5
+- New scripts/verify-sharp-upgrade.ts smoke test: PNG resize, WebP encode, AVIF encode (exercises fixed libheif path; ftypavif box verified — metadata reports container 'heif'), composite — ALL PASS
+- Verified bun.lock diff scoped to sharp/@img/emnapi only; all other 961 packages unchanged
+- Hygiene (same push): reset an accidental local auto-commit that staged db/pgdata binaries; untracked db/pgdata (1940 files) matching earlier intent of 67f03c4; committed worklog only
+
+Stage Summary:
+- Both Dependabot HIGH alerts addressed by sharp >= 0.35.4 tree-wide; smoke tests pass; next resolves 0.35.5
+- Commits pushed to GitHub main; Dependabot should auto-close both alerts on next manifest scan
