@@ -52,3 +52,11 @@ prompt
 server.log
 # Skills directory
 /skills/
+# Local runtime artifacts (do not commit)
+db/pgdata/
+db/*.db
+preone-plus/
+tests/
+dev.log
+server.log
+*.pid
