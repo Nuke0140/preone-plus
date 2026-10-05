@@ -47,7 +47,7 @@ export function translate<N extends CatalogNamespace>(
   let text = catalog[key] || fallback[key] || key
 
   for (const [name, value] of Object.entries(values)) {
-    text = text.replace(new RegExp('\\\\{\\\\{' + name + '\\\\}\\\\}', 'g'), String(value))
+    text = text.split('{{' + name + '}}').join(String(value))
   }
   return text
 }
