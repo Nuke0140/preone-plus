@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { ok, Errors } from '@/lib/api'
 import { requireApi, isResponse } from '@/lib/auth-api'
 import { SettingsService } from '@/lib/settings/settings-service'
+import { localizedBadRequest } from '@/lib/i18n/api-errors'
 
 /**
  * GET /api/v1/settings/preferences
@@ -33,6 +34,7 @@ async function _PATCH(req: NextRequest) {
     const updated = await SettingsService.updateUserPreferences(session.uid, body)
     return ok(updated)
   } catch (e: any) {
+    if (e?.message === 'INVALID_LOCALE') return localizedBadRequest(req, 'INVALID_LOCALE')
     return Errors.system(e)
   }
 }
