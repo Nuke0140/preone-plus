@@ -143,8 +143,8 @@ export class NotificationEngine {
           recipientId: r.guardianId || r.staffProfileId || r.userId || 'UNKNOWN',
           recipientUserId: r.userId,
           recipientAddress,
-          title: finalTitle,
-          body: finalBody,
+          title: timelineTitle,
+          body: timelineBody,
           category: input.category || 'SYSTEM',
           severity: input.severity || 'INFO',
           linkUrl: input.linkUrl,
@@ -154,6 +154,9 @@ export class NotificationEngine {
         deliveries.push(res)
       }
     }
+
+    const timelineTitle = fallbackTitle
+    const timelineBody = fallbackBody
 
     // 6. Child Timeline Record integration (if student-scoped and not skipped)
     let timelineEntryId: string | undefined
