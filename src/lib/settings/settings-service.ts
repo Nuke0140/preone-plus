@@ -10,7 +10,7 @@
  */
 
 import { db } from '@/lib/db'
-import { isSupportedLocale, SupportedLocale } from '@/lib/i18n/config'
+import { isSupportedLocale, normalizeLocale, SupportedLocale } from '@/lib/i18n/config'
 import { recordAudit } from '@/lib/audit'
 import { ROLE_PERMISSIONS, Role } from '@/lib/auth'
 import { CANONICAL_ROLES } from '@/lib/roles'
@@ -358,7 +358,7 @@ export class SettingsService {
       userId,
       ...defaultPrefs,
       ...storedPrefs,
-      locale: user?.locale || storedPrefs.locale || 'en-IN',
+      locale: normalizeLocale(user?.locale || storedPrefs.locale),
     }
   }
 
