@@ -1,5 +1,4 @@
 import { DEFAULT_LOCALE, SupportedLocale, normalizeLocale } from './config'
-import { db } from '@/lib/db'
 
 export function localeFromAcceptLanguage(header: string | null): SupportedLocale | null {
   if (!header) return null
@@ -16,6 +15,8 @@ export async function resolveLocale(input?: {
   tenantId?: string | null
   acceptLanguage?: string | null
 }): Promise<SupportedLocale> {
+  const { db } = await import('@/lib/db')
+
   if (input?.userId) {
     const user = await db.user.findUnique({ where: { id: input.userId }, select: { locale: true } })
     const userLocale = normalizeLocale(user?.locale)
