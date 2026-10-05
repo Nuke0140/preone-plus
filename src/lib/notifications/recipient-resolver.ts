@@ -93,7 +93,7 @@ export class RecipientResolver {
       include: {
         guardian: {
           include: {
-            user: { select: { id: true, email: true, phone: true } },
+            user: { select: { id: true, email: true, phone: true, locale: true } },
           },
         },
       },
@@ -190,6 +190,7 @@ export class RecipientResolver {
       phone: sp.user.phone,
       email: sp.user.email,
       role: sp.designation || 'STAFF',
+      locale: sp.user.locale,
     }))
   }
 
