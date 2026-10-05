@@ -1,0 +1,15 @@
+{
+  "AUTH_001": "Authentication required.",
+  "AUTH_002": "Your session is invalid or has expired. Please sign in again.",
+  "PERMISSION_001": "You do not have permission to perform this action.",
+  "NOT_FOUND_001": "The requested resource could not be found.",
+  "VALIDATION_001": "Please check the submitted information.",
+  "BAD_REQUEST": "The request is invalid.",
+  "CONFLICT_001": "This change conflicts with existing data.",
+  "SYSTEM_001": "Something went wrong on our side. Please try again.",
+  "TENANT_REQUIRED": "A school or tenant context is required.",
+  "STUDENT_NOT_FOUND": "Student record was not found.",
+  "PARENT_LIMIT_REACHED": "A maximum of two parent accounts are permitted per student.",
+  "INVALID_PICKUP_PIN": "The pickup security PIN is incorrect.",
+  "INVALID_LOCALE": "Choose English (India), Hindi, or Marathi."
+}
