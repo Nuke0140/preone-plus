@@ -1,0 +1,23 @@
+name: PreOne i18n verification
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/i18n/**'
+      - 'src/lib/notifications/**'
+      - 'src/lib/api.ts'
+      - 'src/lib/with-api.ts'
+      - 'src/lib/settings/**'
+      - 'scripts/verify-i18n.ts'
+      - 'package.json'
+      - 'bun.lock'
+
+jobs:
+  i18n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run test:i18n
+      - run: bunx tsc --noEmit --pretty false

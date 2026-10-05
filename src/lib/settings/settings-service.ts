@@ -10,6 +10,7 @@
  */
 
 import { db } from '@/lib/db'
+import { isSupportedLocale, normalizeLocale, SupportedLocale } from '@/lib/i18n/config'
 import { recordAudit } from '@/lib/audit'
 import { ROLE_PERMISSIONS, Role } from '@/lib/auth'
 import { CANONICAL_ROLES } from '@/lib/roles'
@@ -357,7 +358,7 @@ export class SettingsService {
       userId,
       ...defaultPrefs,
       ...storedPrefs,
-      locale: user?.locale || storedPrefs.locale || 'en-IN',
+      locale: normalizeLocale(user?.locale || storedPrefs.locale),
     }
   }
 
@@ -365,6 +366,9 @@ export class SettingsService {
    * Updates user preferences in User.preferences and optionally User.locale
    */
   static async updateUserPreferences(userId: string, updates: Record<string, any>) {
+    if (updates.locale !== undefined && !isSupportedLocale(updates.locale)) {
+      throw new Error('INVALID_LOCALE')
+    }
     const current = await this.getUserPreferences(userId)
     const { userId: _uid, ...existingPrefs } = current
 
@@ -378,7 +382,8 @@ export class SettingsService {
       updatedAt: new Date(),
     }
     if (updates.locale && typeof updates.locale === 'string') {
-      dataToUpdate.locale = updates.locale
+      const locale: SupportedLocale = updates.locale
+      dataToUpdate.locale = locale
     }
 
     const updatedUser = await db.user.update({

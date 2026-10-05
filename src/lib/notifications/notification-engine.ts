@@ -18,6 +18,8 @@ import { RecipientResolver, ResolvedRecipient } from './recipient-resolver'
 import { ChannelAdapters, ChannelDeliveryResult } from './channel-adapters'
 import { recordChildEvent } from '@/lib/notify'
 import { recordAudit } from '@/lib/audit'
+import { normalizeLocale } from '@/lib/i18n/config'
+import { notificationText } from '@/lib/i18n/catalog'
 
 export interface DispatchNotificationInput {
   tenantId: string
@@ -107,15 +109,25 @@ export class NotificationEngine {
       recipients = await RecipientResolver.resolveStaffRecipients(input.tenantId, input.staffFilter)
     }
 
-    // 4. Format Title & Body with placeholders
+    // 4. Resolve tenant fallback locale once; recipient locale wins when available.
+    const tenant = await db.tenant.findUnique({ where: { id: input.tenantId }, select: { locale: true } })
+    const tenantLocale = normalizeLocale(tenant?.locale)
     const placeholders = input.placeholders || {}
-    const finalTitle = this.formatTemplate(input.title, placeholders)
-    const finalBody = this.formatTemplate(input.body, placeholders)
+    const fallbackTitle = this.formatTemplate(input.title, placeholders)
+    const fallbackBody = this.formatTemplate(input.body, placeholders)
+
+    const localize = (text: string, part: 'title' | 'body', locale: ReturnType<typeof normalizeLocale>) => {
+      const translated = notificationText(locale, input.eventType, part, placeholders)
+      return translated === input.eventType || translated === input.eventType + '_TITLE' ? text : translated
+    }
 
     const deliveries: ChannelDeliveryResult[] = []
 
     // 5. Deliver across each enabled channel for each recipient
     for (const r of recipients) {
+      const recipientLocale = normalizeLocale(r.locale || tenantLocale)
+      const finalTitle = localize(input.title, 'title', recipientLocale)
+      const finalBody = localize(input.body, 'body', recipientLocale)
       for (const channel of activeChannels) {
         let recipientAddress: string | null = null
         if (channel === 'EMAIL') recipientAddress = r.email || null
@@ -143,6 +155,9 @@ export class NotificationEngine {
       }
     }
 
+    const timelineTitle = fallbackTitle
+    const timelineBody = fallbackBody
+
     // 6. Child Timeline Record integration (if student-scoped and not skipped)
     let timelineEntryId: string | undefined
     if (input.studentId && !input.skipTimelineEntry) {
@@ -159,8 +174,8 @@ export class NotificationEngine {
           tenantId: input.tenantId,
           studentId: input.studentId,
           type: timelineType,
-          title: finalTitle,
-          body: finalBody,
+          title: timelineTitle,
+          body: timelineBody,
           actorId: input.actor?.id,
           classroomId: input.classroomId,
           notifyEvent: input.eventType as any,

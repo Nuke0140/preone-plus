@@ -1,0 +1,10 @@
+{
+  "INVOICE": "Invoice",
+  "RECEIPT": "Receipt",
+  "FEE_DUE": "Fee due",
+  "AMOUNT_PAID": "Amount paid",
+  "BALANCE_DUE": "Balance due",
+  "DUE_DATE": "Due date",
+  "PAYMENT_RECEIVED": "Payment received",
+  "CURRENCY_INR": "Indian Rupee (INR)"
+}

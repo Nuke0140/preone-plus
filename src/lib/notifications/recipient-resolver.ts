@@ -20,6 +20,7 @@ export interface ResolvedRecipient {
   relationship?: string | null
   role?: string | null
   isPrimary?: boolean
+  locale?: string | null
 }
 
 export class RecipientResolver {
@@ -43,7 +44,7 @@ export class RecipientResolver {
       include: {
         guardian: {
           include: {
-            user: { select: { id: true, email: true, phone: true } },
+            user: { select: { id: true, email: true, phone: true, locale: true } },
           },
         },
       },
@@ -60,6 +61,7 @@ export class RecipientResolver {
       relationship: sg.relationship || sg.guardian.relationship,
       isPrimary: sg.isPrimary,
       role: 'PARENT',
+      locale: sg.guardian.user?.locale || null,
     }))
   }
 
@@ -91,7 +93,7 @@ export class RecipientResolver {
       include: {
         guardian: {
           include: {
-            user: { select: { id: true, email: true, phone: true } },
+            user: { select: { id: true, email: true, phone: true, locale: true } },
           },
         },
       },
@@ -111,6 +113,7 @@ export class RecipientResolver {
           relationship: sg.relationship || sg.guardian.relationship,
           isPrimary: sg.isPrimary,
           role: 'PARENT',
+          locale: sg.guardian.user?.locale || null,
         })
       }
     }
@@ -148,6 +151,7 @@ export class RecipientResolver {
           phone: u.phone,
           email: u.email,
           role: u.staffProfile?.designation || 'STAFF',
+          locale: u.locale,
         },
       ]
     }
@@ -175,7 +179,7 @@ export class RecipientResolver {
           : {}),
       },
       include: {
-        user: { select: { id: true, email: true, phone: true, fullName: true } },
+        user: { select: { id: true, email: true, phone: true, fullName: true, locale: true } },
       },
     })
 
@@ -186,6 +190,7 @@ export class RecipientResolver {
       phone: sp.user.phone,
       email: sp.user.email,
       role: sp.designation || 'STAFF',
+      locale: sp.user.locale,
     }))
   }
 

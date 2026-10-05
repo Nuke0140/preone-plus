@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getActiveTraceId, logger, generateTraceId } from './logger'
 import { toPreOneError } from './errors'
+import { getActiveLocale } from './i18n/request-locale'
+import { apiErrorMessage } from './i18n/catalog'
 
 /**
  * PreOne Authoritative API Contract Shim
@@ -59,11 +61,11 @@ export function fail(
 }
 
 export const Errors = {
-  unauthorized: (msg = 'Authentication required') => fail('AUTH_001', msg, 401),
-  invalidToken: (msg = 'Invalid or expired session') => fail('AUTH_002', msg, 401),
-  forbidden: (what = 'You do not have permission to perform this action') =>
-    fail('PERMISSION_001', what, 403),
-  notFound: (entity = 'Resource') => fail('NOT_FOUND_001', `${entity} not found`, 404),
+  unauthorized: (msg?: string) => fail('AUTH_001', msg || apiErrorMessage(getActiveLocale(), 'AUTH_001'), 401),
+  invalidToken: (msg?: string) => fail('AUTH_002', msg || apiErrorMessage(getActiveLocale(), 'AUTH_002'), 401),
+  forbidden: (what?: string) =>
+    fail('PERMISSION_001', what || apiErrorMessage(getActiveLocale(), 'PERMISSION_001'), 403),
+  notFound: (entity = 'Resource') => fail('NOT_FOUND_001', entity === 'Resource' ? apiErrorMessage(getActiveLocale(), 'NOT_FOUND_001') : `${entity} not found`, 404),
   validation: (message: string, field?: string, details?: unknown) =>
     fail('VALIDATION_001', message, 400, field, details),
   badRequest: (message: string, field?: string) => fail('BAD_REQUEST', message, 400, field),
@@ -78,7 +80,7 @@ export const Errors = {
       traceId: currentTrace,
     }, error)
 
-    return fail('SYSTEM_001', 'Something went wrong on our side', 500)
+    return fail('SYSTEM_001', apiErrorMessage(getActiveLocale(), 'SYSTEM_001'), 500)
   },
 }
 

@@ -15,6 +15,7 @@ import {
 import { toPreOneError, PreOneError } from './errors'
 import { requireApi, isResponse } from './auth-api'
 import { SessionPayload } from './auth'
+import { resolveLocale } from './i18n/locale-resolver'
 
 export interface ApiContext {
   traceId: string
@@ -104,9 +105,18 @@ export function withApi<T = unknown>(
         traceContext.tenantId = session.tenantId || undefined
         traceContext.branchId = session.branchId || undefined
         traceContext.role = session.role
+        traceContext.locale = await resolveLocale({
+          userId: session.uid,
+          tenantId: session.tenantId,
+          acceptLanguage: req.headers.get('accept-language'),
+        })
       }
 
       try {
+        if (!traceContext.locale) {
+          traceContext.locale = await resolveLocale({ acceptLanguage: req.headers.get('accept-language') })
+        }
+
         const apiCtx: ApiContext = {
           traceId,
           module: derivedModule,

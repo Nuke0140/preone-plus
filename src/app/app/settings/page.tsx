@@ -344,7 +344,7 @@ export default function SettingsControlCenter() {
       const res = await fetch('/api/v1/settings/preferences', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: themePref, density: densityPref }),
+        body: JSON.stringify({ theme: themePref, density: densityPref, locale: profileForm.locale || 'en-IN' }),
       }).then((r) => r.json())
 
       if (res.success) {
@@ -511,8 +511,8 @@ export default function SettingsControlCenter() {
                 }}
               >
                 <option value="en-IN">English (India) - en-IN</option>
-                <option value="en-US">English (US) - en-US</option>
-                <option value="en-GB">English (UK) - en-GB</option>
+                <option value="hi-IN">हिन्दी - hi-IN</option>
+                <option value="mr-IN">मराठी - mr-IN</option>
               </select>
             </div>
             <div className="form-group">

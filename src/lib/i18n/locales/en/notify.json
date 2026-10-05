@@ -1,0 +1,22 @@
+{
+  "ATTENDANCE_UPDATE_TITLE": "Attendance update for {{studentName}}",
+  "ATTENDANCE_UPDATE": "{{studentName}}'s attendance was updated at {{time}}.",
+  "STUDENT_ARRIVAL_TITLE": "Arrival confirmed",
+  "STUDENT_ARRIVAL": "{{studentName}} arrived safely at school at {{time}}.",
+  "HEALTH_ALERT_TITLE": "Health alert for {{studentName}}",
+  "HEALTH_ALERT": "A health alert has been recorded for {{studentName}}. Please contact the school for details.",
+  "FEE_DUE_TITLE": "Fee payment reminder",
+  "FEE_DUE": "Fee invoice {{invoiceNo}} for {{amount}} is due on {{dueDate}}.",
+  "FEE_RECEIVED_TITLE": "Fee payment received",
+  "FEE_RECEIVED": "We received {{amount}} for invoice {{invoiceNo}}. Thank you.",
+  "TRANSPORT_DELAY_TITLE": "School transport update",
+  "TRANSPORT_DELAY": "The school transport service is delayed. {{details}}",
+  "PICKUP_RELEASED_TITLE": "Pickup confirmation",
+  "PICKUP_RELEASED": "{{studentName}} has been released to authorized caregiver {{caregiverName}}.",
+  "ANNOUNCEMENT_TITLE": "School announcement",
+  "ANNOUNCEMENT": "{{message}}",
+  "LEAVE_STATUS_TITLE": "Leave request update",
+  "LEAVE_STATUS": "Your leave request status is {{status}}. {{details}}",
+  "INVENTORY_ALERT_TITLE": "Inventory alert",
+  "INVENTORY_ALERT": "An inventory alert requires attention: {{details}}"
+}
