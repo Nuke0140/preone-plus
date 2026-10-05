@@ -12,16 +12,27 @@ import hiFinance from './locales/hi/finance.json'
 import mrFinance from './locales/mr/finance.json'
 import { DEFAULT_LOCALE, SupportedLocale } from './config'
 
-const catalogs = {
+type CatalogShape = {
+  common: typeof enCommon
+  errors: typeof enErrors
+  notify: typeof enNotify
+  finance: typeof enFinance
+}
+
+// Compile-time parity: every supported locale must contain every English key.
+const hiCatalog: CatalogShape = { common: hiCommon, errors: hiErrors, notify: hiNotify, finance: hiFinance }
+const mrCatalog: CatalogShape = { common: mrCommon, errors: mrErrors, notify: mrNotify, finance: mrFinance }
+
+const catalogs: Record<SupportedLocale, CatalogShape> = {
   'en-IN': { common: enCommon, errors: enErrors, notify: enNotify, finance: enFinance },
-  'hi-IN': { common: hiCommon, errors: hiErrors, notify: hiNotify, finance: hiFinance },
-  'mr-IN': { common: mrCommon, errors: mrErrors, notify: mrNotify, finance: mrFinance },
-} as const
+  'hi-IN': hiCatalog,
+  'mr-IN': mrCatalog,
+}
 
-export type CatalogNamespace = keyof typeof catalogs[typeof DEFAULT_LOCALE]
-export type CatalogKey<N extends CatalogNamespace> = keyof typeof catalogs[typeof DEFAULT_LOCALE][N] & string
+export type CatalogNamespace = keyof CatalogShape
+export type CatalogKey<N extends CatalogNamespace> = keyof CatalogShape[N] & string
 
-export function getCatalog<N extends CatalogNamespace>(locale: SupportedLocale, namespace: N) {
+export function getCatalog<N extends CatalogNamespace>(locale: SupportedLocale, namespace: N): CatalogShape[N] {
   return catalogs[locale][namespace]
 }
 
@@ -56,5 +67,7 @@ export function apiErrorMessage(
   code: string,
   fallback?: string
 ) {
-  return translate(locale, 'errors', code as CatalogKey<'errors'>, {}) || fallback || code
+  const key = code as CatalogKey<'errors'>
+  const message = translate(locale, 'errors', key, {})
+  return message === key ? (fallback || code) : message
 }
