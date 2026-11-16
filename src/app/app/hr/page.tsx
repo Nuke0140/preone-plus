@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/components/preone/Toast'
 import { can } from '@/lib/auth'
+import { getVisibleHRTabs, canViewHRTab } from '@/lib/hr-access'
 import {
   HRHeader,
   HRDashboardTab,
@@ -44,10 +45,13 @@ function HRPageContent() {
   const [busy, setBusy] = useState(false)
 
   // 2. Auth & RBAC State
-  const [role, setRole] = useState<string | null>(null)
-  const canWrite = can(role as any, 'hr:write')
-  const canApprove = can(role as any, 'hr:approve')
-  const canPayroll = can(role as any, 'payroll:process')
+  const [roles, setRoles] = useState<string[]>([])
+  const [roleLoaded, setRoleLoaded] = useState(false)
+  const visibleTabs = getVisibleHRTabs(roles)
+  const canWrite = can(roles as any, 'hr:write')
+  const canApprove = can(roles as any, 'hr:approve')
+  const canPayroll = can(roles as any, 'payroll:process')
+  const canReadHR = can(roles as any, 'hr:read')
 
   // 3. Shared Data
   const [metrics, setMetrics] = useState<HRMetrics | null>(null)
@@ -86,8 +90,37 @@ function HRPageContent() {
   const [isDisburseOpen, setIsDisburseOpen] = useState(false)
   const [disburseTarget, setDisburseTarget] = useState<PayrollCycleItem | null>(null)
 
-  // Sync tab with URL
+  // Resolve the authenticated role set before rendering or loading HR data.
+  useEffect(() => {
+    let active = true
+    fetch('/api/v1/auth/session')
+      .then((r) => r.json())
+      .then((res) => {
+        if (!active) return
+        const nextRoles = (res?.success && Array.isArray(res.data?.roles) ? res.data.roles : []) as string[]
+        setRoles(nextRoles)
+        setRoleLoaded(true)
+      })
+      .catch(() => {
+        if (active) setRoleLoaded(true)
+      })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!roleLoaded) return
+    const allowed = getVisibleHRTabs(roles as any)
+    if (allowed.length > 0 && !allowed.includes(tab)) {
+      setTab(allowed[0])
+      const params = new URLSearchParams(window.location.search)
+      params.set('tab', allowed[0])
+      router.replace(`/app/hr?${params.toString()}`, { scroll: false })
+    }
+  }, [roleLoaded, roles, tab, router])
+
+  // Sync tab with URL; reject direct URL manipulation to hidden tabs.
   const handleTabChange = (newTab: HRTabKey) => {
+    if (!canViewHRTab(roles as any, newTab)) return
     setTab(newTab)
     const params = new URLSearchParams(window.location.search)
     params.set('tab', newTab)
@@ -170,17 +203,18 @@ function HRPageContent() {
 
   // Initial load
   useEffect(() => {
-    loadOverview()
-  }, [loadOverview])
+    if (roleLoaded && canReadHR) loadOverview()
+  }, [roleLoaded, canReadHR, loadOverview])
 
   // Tab switch loader
   useEffect(() => {
+    if (!roleLoaded || !canViewHRTab(roles as any, tab)) return
     if (tab === 'dashboard') loadOverview()
     else if (tab === 'employees') loadStaff()
     else if (tab === 'attendance') loadAttendance()
     else if (tab === 'leave') loadLeaves()
     else if (tab === 'payroll') loadPayroll()
-  }, [tab, loadOverview, loadStaff, loadAttendance, loadLeaves, loadPayroll])
+  }, [roleLoaded, roles, tab, loadOverview, loadStaff, loadAttendance, loadLeaves, loadPayroll])
 
   // ── Actions ───────────────────────────────────────────────────
 
@@ -389,6 +423,7 @@ function HRPageContent() {
       {/* ── Top Header & Tab Navigation ── */}
       <HRHeader
         activeTab={tab}
+        roles={roles as any}
         onTabChange={handleTabChange}
         lastSyncTime={lastSyncTime}
         searchQuery={searchQuery}
@@ -411,7 +446,7 @@ function HRPageContent() {
 
       {/* ── Tab Workspace ── */}
       <main className="min-h-[400px]">
-        {tab === 'dashboard' && (
+        {tab === 'dashboard' && canViewHRTab(roles as any, 'dashboard') && (
           <HRDashboardTab
             metrics={metrics}
             loading={busy && !metrics}
@@ -421,7 +456,7 @@ function HRPageContent() {
           />
         )}
 
-        {tab === 'employees' && (
+        {tab === 'employees' && canViewHRTab(roles as any, 'employees') && (
           <HREmployeesTab
             staffList={staffList}
             branches={branches}
@@ -443,7 +478,7 @@ function HRPageContent() {
           />
         )}
 
-        {tab === 'attendance' && (
+        {tab === 'attendance' && canViewHRTab(roles as any, 'attendance') && (
           <HRAttendanceTab
             attendanceRecords={attendanceRecords}
             date={attendanceDate}
@@ -463,7 +498,7 @@ function HRPageContent() {
           />
         )}
 
-        {tab === 'leave' && (
+        {tab === 'leave' && canViewHRTab(roles as any, 'leave') && (
           <HRLeaveTab
             leaves={leaves}
             statusFilter={leaveStatus}
@@ -475,9 +510,9 @@ function HRPageContent() {
           />
         )}
 
-        {tab === 'schedule' && <HRScheduleTab branchFilter={staffBranch} />}
+        {tab === 'schedule' && canViewHRTab(roles as any, 'schedule') && <HRScheduleTab branchFilter={staffBranch} />}
 
-        {tab === 'payroll' && (
+        {tab === 'payroll' && canViewHRTab(roles as any, 'payroll') && (
           <HRPayrollTab
             cycles={payrollCycles}
             onOpenProcessPayroll={() => setIsProcessPayrollOpen(true)}
@@ -490,18 +525,18 @@ function HRPageContent() {
           />
         )}
 
-        {tab === 'performance' && <HRPerformanceTab canWrite={canWrite} />}
+        {tab === 'performance' && canViewHRTab(roles as any, 'performance') && <HRPerformanceTab canWrite={canWrite} />}
 
-        {tab === 'training' && <HRTrainingTab canWrite={canWrite} />}
+        {tab === 'training' && canViewHRTab(roles as any, 'training') && <HRTrainingTab canWrite={canWrite} />}
 
-        {tab === 'requests' && (
+        {tab === 'requests' && canViewHRTab(roles as any, 'requests') && (
           <HRRequestsTab
             canApprove={canApprove}
             onLeaveAction={handleActionLeave}
           />
         )}
 
-        {tab === 'reports' && <HRReportsTab branches={branches} />}
+        {tab === 'reports' && canViewHRTab(roles as any, 'reports') && <HRReportsTab branches={branches} />}
       </main>
 
       {/* ── Modals & Drawers ── */}
