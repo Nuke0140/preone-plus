@@ -23,9 +23,12 @@ import {
   ArrowUpRight,
 } from 'lucide-react'
 import type { HRTabKey } from './types'
+import { getVisibleHRTabs } from '@/lib/hr-access'
+import type { Role } from '@/lib/auth'
 
 interface HRHeaderProps {
   activeTab: HRTabKey
+  roles: Role[]
   onTabChange: (tab: HRTabKey) => void
   lastSyncTime?: string
   searchQuery: string
@@ -52,6 +55,7 @@ interface ModuleDef {
 
 export function HRHeader({
   activeTab,
+  roles,
   onTabChange,
   lastSyncTime,
   searchQuery,
@@ -313,8 +317,8 @@ export function HRHeader({
 
           {/* Right: Search + Refresh + Contextual Actions */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {/* Quick Staff Search */}
-            <div className="relative min-w-[200px] sm:min-w-[220px]">
+            {/* Quick Staff Search — only roles with staff directory access */}
+            {getVisibleHRTabs(roles).includes('employees') && <div className="relative min-w-[200px] sm:min-w-[220px]">
               <Search
                 size={14}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -328,7 +332,7 @@ export function HRHeader({
                   if (activeTab !== 'employees') onTabChange('employees')
                 }}
               />
-            </div>
+            </div>}
 
             {/* Refresh / Sync Button */}
             <button
@@ -352,7 +356,7 @@ export function HRHeader({
       {/* ── 2. Windows / Metro-Inspired Module Navigation (10 Interactive Cards) ── */}
       <nav aria-label="HR Modules" className="w-full">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
-          {modules.map((m) => {
+          {modules.filter((m) => getVisibleHRTabs(roles).includes(m.key)).map((m) => {
             const Icon = m.icon
             const isActive = activeTab === m.key
 
